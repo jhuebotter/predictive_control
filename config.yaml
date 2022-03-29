@@ -1,0 +1,35 @@
+# general parameters
+seed: 42
+experiment: training
+
+# task parameters
+task: reacher
+env_steps: 200
+render: false
+
+# model parameters
+memory_size: 1_000
+pol_params:
+  act_func: 'lrelu'
+  hidden_dim: 128
+  lr: 0.001
+  model: MLPPB
+  optimizer: adam
+tra_params:
+  act_func: 'lrelu'
+  hidden_dim: 128
+  lr: 0.001
+  model: GRUPB
+  optimizer: adam
+
+
+# training parameters
+total_steps: 4_000_000
+episodes_per_iteration: 10
+updates_per_iteration: 10
+batch_size: 128
+beta: 0.0
+unroll_steps: 20
+warmup: 30
+record_every_n_iterations: 10
+record_first_n_episodes: 10

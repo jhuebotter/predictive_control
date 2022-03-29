@@ -1,0 +1,7 @@
+pytorch
+matplotlib
+wandb
+pyyaml
+gym
+mujoco
+dm-control

@@ -44,7 +44,7 @@ run_id = datetime.now().strftime('%Y%m%d%H%M%S')
 run_dir = Path('results', config['experiment'], config['task'],
                f"tra{config['transition']['model']['type']}_pol{config['policy']['model']['type']}", run_id)
 run_dir.mkdir(parents=True)
-wandb.init(config=config, project="ann-control", entity="jhuebotter", dir='./results')
+wandb.init(config=config, project=config['project'], entity=config['entity'], dir='./results')
 print(wandb.run.dir)
 wandb.watch([transitionnet, policynet], log='all')
 # TODO: only need to make one directory - should probably use the one made by wandb

@@ -40,3 +40,7 @@ unroll_steps: 20
 warmup: 30
 record_every_n_iterations: 10
 record_first_n_episodes: 10
+
+# logging parameters
+project: ann-control
+entity: jhuebotter

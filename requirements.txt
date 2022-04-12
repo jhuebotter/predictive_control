@@ -1,6 +1,7 @@
 pytorch
 matplotlib
 wandb
+omegaconf
 pyyaml
 gym
 mujoco

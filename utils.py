@@ -183,6 +183,20 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     return policynet
 
 
+def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimizer:
+    """make an optimizer for a model"""
+
+    optim = config['type'].lower()
+    if optim == 'adam':
+        Opt = torch.optim.Adam
+    elif optim == 'sgd':
+        Opt = torch.optim.SGD
+    else:
+        raise NotImplementedError(f'The optimizer {optim} is not implemented')
+
+    return Opt(model.parameters(), **config['params'])
+
+
 def dict_mean(dict_list: list[dict]) -> dict:
     """for a list of dicts with the same keys and numeric values return a dict with the same keys and averaged values"""
     

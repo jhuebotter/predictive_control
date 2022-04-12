@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from datetime import datetime
 from pathlib import Path
-from utils import ReplayMemory, make_env, make_transition_model, make_policy_model, save_checkpoint, dict_mean, \
+from utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, dict_mean, \
     reparameterize as rp
 from training_functions import train_policynetPB, train_transitionnetRNNPBNLL, baseline_prediction
 from plotting import render_video
@@ -10,8 +10,6 @@ from config import get_config, save_config
 from tqdm import tqdm
 import wandb
 
-#import os
-#os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 torch.autograd.set_detect_anomaly(True)
 
 # read some parameters from a config file
@@ -38,19 +36,6 @@ transitionnet = make_transition_model(env, config['transition']['model']).to(dev
 policynet = make_policy_model(env, config['policy']['model']).to(device)
 
 # initialize the optimizers
-def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimizer:
-    """make an optimizer for a model"""
-
-    optim = config['type'].lower()
-    if optim == 'adam':
-        Opt = torch.optim.Adam
-    elif optim == 'sgd':
-        Opt = torch.optim.SGD
-    else:
-        raise NotImplementedError(f'The optimizer {optim} is not implemented')
-
-    return Opt(model.parameters(), **config['params'])
-
 opt_trans = make_optimizer(transitionnet, config['transition']['optim'])
 opt_policy = make_optimizer(policynet, config['policy']['optim'])
 

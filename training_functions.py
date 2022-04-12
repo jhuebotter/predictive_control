@@ -115,7 +115,7 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
                 action_loss = torch.mean(torch.pow(t - s_hat_mu, 2) * loss_gain)
 
                 action_target_dist = torch.distributions.normal.Normal(0., action_target_std)
-                action_reg = torch.distributions.kl_divergence(action_dist, action_target_dist).mean()
+                action_reg = torch.distributions.kl_divergence(action_dist, action_target_dist).mean().to(next(policy_model.parameters()).device)
                 reg_loss = beta * action_reg
 
                 loss += action_loss + reg_loss

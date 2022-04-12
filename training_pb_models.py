@@ -1,22 +1,21 @@
 import torch
 import numpy as np
-import os
 from datetime import datetime
 from pathlib import Path
 from utils import ReplayMemory, make_env, make_transition_model, make_policy_model, save_checkpoint, dict_mean, \
     reparameterize as rp
 from training_functions import train_policynetPB, train_transitionnetRNNPBNLL, baseline_prediction
 from plotting import render_video
-from config import read_config, save_config
+from config import get_config, save_config
 from tqdm import tqdm
 import wandb
 
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+#import os
+#os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 torch.autograd.set_detect_anomaly(True)
 
 # read some parameters from a config file
-# TODO have standard config parameters overwritten by console for easier grid searches
-config = read_config()
+config = get_config()
 seed = config['seed']
 np.random.seed(seed)
 torch.manual_seed(seed)
@@ -35,15 +34,14 @@ loss_gain = env.loss_gain
 memory = ReplayMemory(config['memory_size'])
 
 # initialize the models
-transitionnet = make_transition_model(env, config).to(device)
-policynet = make_policy_model(env, config).to(device)
+transitionnet = make_transition_model(env, config['transition']['model']).to(device)
+policynet = make_policy_model(env, config['policy']['model']).to(device)
 
-# TODO fix the optimizer creation process
 # initialize the optimizers
-def make_optimizer(model: torch.Module, config: dict) -> torch.optim.Optimizer:
-    """ """
+def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimizer:
+    """make an optimizer for a model"""
 
-    optim = config['optimizer'].lower()
+    optim = config['type'].lower()
     if optim == 'adam':
         Opt = torch.optim.Adam
     elif optim == 'sgd':
@@ -51,23 +49,21 @@ def make_optimizer(model: torch.Module, config: dict) -> torch.optim.Optimizer:
     else:
         raise NotImplementedError(f'The optimizer {optim} is not implemented')
 
-    return Opt(model.parameters(), **config)
+    return Opt(model.parameters(), **config['params'])
 
-opt_trans = make_optimizer(transitionnet, config['tra_params'])
-
-#opt_trans = torch.optim.Adam(transitionnet.parameters(), lr=config['tra_params']['lr'])
-#opt_policy = torch.optim.Adam(policynet.parameters(), lr=config['pol_params']['lr'])
+opt_trans = make_optimizer(transitionnet, config['transition']['optim'])
+opt_policy = make_optimizer(policynet, config['policy']['optim'])
 
 # make directory to save model and plots
 run_id = datetime.now().strftime('%Y%m%d%H%M%S')
 run_dir = Path('results', config['experiment'], config['task'],
-               f"tra{config['tra_params']['model']}_pol{config['pol_params']['model']}", run_id)
+               f"tra{config['transition']['model']['type']}_pol{config['policy']['model']['type']}", run_id)
 run_dir.mkdir(parents=True)
 wandb.init(config=config, project="ann-control", entity="jhuebotter", dir='./results')
 print(wandb.run.dir)
 wandb.watch([transitionnet, policynet], log='all')
 # TODO: only need to make one directory - should probably use the one made by wandb
-# TODO: make wandb optional with local logging via pandas and plotting via matplotlib
+# TODO: make wandb optional with local logging via pandas and plotting via matplotlib - later
 
 # save the run configuration in the result dir
 config_path = Path(run_dir, 'config.yaml')
@@ -78,7 +74,7 @@ episode_count = 1
 transitionnet_updates = 0
 policynet_updates = 0
 iteration = 1
-while step <= config['total_steps']:
+while step <= config['total_env_steps']:
     # record a bunch of episodes to memory
 
     print()

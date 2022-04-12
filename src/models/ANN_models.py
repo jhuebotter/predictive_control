@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from src.models.leakyRNN import LRNN
-from types import *
+from extratyping import *
 
 
 class StatefulModel(Module):

@@ -1,13 +1,15 @@
+from typing import Union
+
 import torch
 import numpy as np
 import matplotlib
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-from types import *
+from extratyping import *
 
 
 def plot_curves(data=dict[str: list[array]], logy: bool = True, show: bool = False,
-                save: Optional[Path, str] = 'curve.png') -> None:
+                save: Optional[Union[Path, str]] = 'curve.png') -> None:
     """create a plot from a dictionary of lists and save to disk"""
 
     fig, ax = plt.subplots()
@@ -27,7 +29,7 @@ def plot_curves(data=dict[str: list[array]], logy: bool = True, show: bool = Fal
 
 
 def render_video(frames: list[array], framerate: int = 30, dpi: int = 70,
-                 save: Optional[Path, str] = './animation.mp4') -> object:
+                 save: Optional[Union[Path, str]] = './animation.mp4') -> object:
     """render a video from a list of numpy RGB arrays and save to disk"""
 
     assert len(frames) > 0
@@ -46,7 +48,6 @@ def render_video(frames: list[array], framerate: int = 30, dpi: int = 70,
     interval = 1000/framerate
     anim = animation.FuncAnimation(fig=fig, func=update, frames=frames,
                                    interval=interval, blit=True, repeat=False)
-
     if save:
         anim.save(save)
 

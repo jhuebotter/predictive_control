@@ -2,7 +2,7 @@ import gym
 import torch
 import torch.nn.functional as F
 import numpy as np
-from types import *
+from extratyping import *
 
 
 def save_checkpoint(model: Module, optimizer: torch.optim.Optimizer = None, step: int = None,
@@ -92,27 +92,28 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
     action_dim = env.action_space.shape[0]
     state_dim = env.observation_space.shape[0]
 
-    params = config['tra_params']
-    if params['model'] == 'MLP':
+    type_ = config['type'].lower()
+    params = dict(**config['params'])
+    if type_ == 'mlp':
         from src.models.ANN_models import TransitionNet
         model = TransitionNet
-    elif params['model'] == 'GRU':
+    elif type_ == 'gru':
         from src.models.ANN_models import TransitionNetGRU
         model = TransitionNetGRU
-    elif params['model'] == 'LRNN':
+    elif type_ == 'lrnn':
         from src.models.ANN_models import TransitionNetLRNN
         model = TransitionNetLRNN
-    elif params['model'] == 'MLPPB':
+    elif type_ == 'mlppb':
         from src.models.ANN_models import TransitionNetPB
         model = TransitionNetPB
-    elif params['model'] == 'GRUPB':
+    elif type_ == 'grupb':
         from src.models.ANN_models import TransitionNetGRUPB
         model = TransitionNetGRUPB
-    elif params['model'] == 'LRNNPB':
+    elif type_ == 'lrnnpb':
         from src.models.ANN_models import TransitionNetLRNNPB
         model = TransitionNetLRNNPB
     else:
-        raise NotImplementedError(f"the transition model {params['model']} is not implemented")
+        raise NotImplementedError(f"the transition model {type_} is not implemented")
 
     if params['act_func'] == 'relu':
         params['act_func'] = F.relu
@@ -139,27 +140,28 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     action_dim = env.action_space.shape[0]
     state_dim = env.observation_space.shape[0]
 
-    params = config['pol_params']
-    if params['model'] == 'MLP':
+    type_ = config['type'].lower()
+    params = dict(**config['params'])
+    if type_ == 'mlp':
         from src.models.ANN_models import PolicyNet
         model = PolicyNet
-    elif params['model'] == 'GRU':
+    elif type_ == 'gru':
         from src.models.ANN_models import PolicyNetGRU
         model = PolicyNetGRU
-    elif params['model'] == 'LRNN':
+    elif type_ == 'lrnn':
         from src.models.ANN_models import PolicyNetLRNN
         model = PolicyNetLRNN
-    elif params['model'] == 'MLPPB':
+    elif type_ == 'mlppb':
         from src.models.ANN_models import PolicyNetPB
         model = PolicyNetPB
-    elif params['model'] == 'GRUPB':
+    elif type_ == 'grupb':
         from src.models.ANN_models import PolicyNetGRUPB
         model = PolicyNetGRUPB
-    elif params['model'] == 'LRNNPB':
+    elif type_ == 'lrnnpb':
         from src.models.ANN_models import PolicyNetLRNNPB
         model = PolicyNetLRNNPB
     else:
-        raise NotImplementedError(f"the policy model {params['model']} is not implemented")
+        raise NotImplementedError(f"the policy model {type_} is not implemented")
 
     if params['act_func'] == 'relu':
         params['act_func'] = F.relu

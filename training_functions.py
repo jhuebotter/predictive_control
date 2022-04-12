@@ -55,7 +55,7 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
     losses = []
     action_losses = []
     reg_losses = []
-    loss_gain = torch.tensor(loss_gain)
+    loss_gain = torch.tensor(loss_gain).to(next(policy_model.parameters()).device)
 
     # TODO: this should be parameter somewhere
     action_target_std = 0.01
@@ -74,9 +74,9 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
             episode_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, next_state)]
             maxlen = min([len(e) for e in episode_batch])
 
-        state_batch = torch.stack([torch.stack([step[0].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
-        target_batch = torch.stack([torch.stack([step[1].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
-        action_batch = torch.stack([torch.stack([step[2].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
+        state_batch = torch.stack([torch.stack([step[0].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1).to(next(policy_model.parameters()).device)
+        target_batch = torch.stack([torch.stack([step[1].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1).to(next(policy_model.parameters()).device)
+        action_batch = torch.stack([torch.stack([step[2].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1).to(next(policy_model.parameters()).device)
 
         # TODO: is this really the appropriate way to train an RNN?
         n_rollouts = maxlen // warmup_steps

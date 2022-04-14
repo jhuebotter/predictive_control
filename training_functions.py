@@ -64,9 +64,9 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
     for i in pbar:
 
         optimizer.zero_grad()
-        loss = torch.tensor([0.])
-        action_loss_ = torch.tensor([0.])
-        reg_loss_ = torch.tensor([0.])
+        loss = torch.tensor([0.]).to(next(policy_model.parameters()).device)
+        action_loss_ = torch.tensor([0.]).to(next(policy_model.parameters()).device)
+        reg_loss_ = torch.tensor([0.]).to(next(policy_model.parameters()).device)
 
         maxlen = -1
         while maxlen <= warmup_steps:
@@ -117,9 +117,6 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
                 action_target_dist = torch.distributions.normal.Normal(0., action_target_std)
                 action_reg = torch.distributions.kl_divergence(action_dist, action_target_dist).mean().to(next(policy_model.parameters()).device)
                 reg_loss = beta * action_reg
-
-                print(action_loss.device)
-                print(action_reg.device)
 
                 loss += action_loss + reg_loss
                 action_loss_ += action_loss

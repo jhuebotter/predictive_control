@@ -100,7 +100,12 @@ class ReacherEnv(gym.Env):
         return observation, target
 
     def render(self, mode="human"):
+
+        print("i can get here")
+
         pixels = self.env.physics.render(height=400, width=400, camera_id=0)
+
+        print('but can i get here?')
 
         if mode == "human":
             if self.img is None:

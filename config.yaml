@@ -1,6 +1,6 @@
 # general parameters
 seed: 42
-experiment: training
+experiment: debug
 
 # task parameters
 task: reacher
@@ -31,15 +31,15 @@ transition:
       lr: 0.001
 
 # training parameters
-total_env_steps: 4_000_000
-episodes_per_iteration: 10
-updates_per_iteration: 20
+total_env_steps: 4_000
+episodes_per_iteration: 2
+updates_per_iteration: 2
 batch_size: 256
 beta: 0.0
 unroll_steps: 20
 warmup: 30
-record_every_n_iterations: 10
-record_first_n_episodes: 10
+record_every_n_iterations: 1
+record_first_n_episodes: 2
 
 # logging parameters
 project: ann-control

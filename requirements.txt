@@ -6,3 +6,4 @@ pyyaml
 gym
 mujoco
 dm-control
+pygame

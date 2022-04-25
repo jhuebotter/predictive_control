@@ -33,8 +33,8 @@ class TwoDPlaneEnv(gym.Env):
         self.max_vel = 1.0
         self.min_vel = -self.max_vel
 
-        self.stop_on_edge = False
-        self.done_on_edge = True
+        self.stop_on_edge = True  # TODO: probably need to change back...
+        self.done_on_edge = False
 
         self.random_target = True
         self.done_on_target = False

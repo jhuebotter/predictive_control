@@ -1,4 +1,5 @@
 from pathlib import Path
+import omegaconf
 from omegaconf import OmegaConf
 
 
@@ -39,8 +40,21 @@ def get_config(filepath: Path or str = "config.yaml", verbose: bool = True):
     def_config = read_config(filepath, verbose=False)
     cli_config = OmegaConf.from_cli()
     config = OmegaConf.merge(def_config, cli_config)
+    config_dict = omegaconf2dict(config)
 
     if verbose:
-        pretty(config)
+        print(OmegaConf.to_yaml(config))
 
-    return config
+    return config_dict
+
+
+def omegaconf2dict(conf: omegaconf.dictconfig.DictConfig) -> dict:
+    """get from omegaconf format to dict so that values can be logged correctly via wandb"""
+
+    d = dict()
+    for k, v in conf.items():
+        if isinstance(v, omegaconf.dictconfig.DictConfig):
+            v = omegaconf2dict(v)
+        d.update({k: v})
+
+    return d

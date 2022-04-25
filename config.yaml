@@ -3,7 +3,7 @@ seed: 42
 experiment: debug
 
 # task parameters
-task: plane
+task: reacher
 env_steps: 200
 render: false
 

@@ -46,6 +46,7 @@ class ReacherEnv(gym.Env):
         self.loss_gain = np.array([1., 1., 0., 0., 0., 0., 0., 0.])
 
         self.img = None
+        self.ctx = None
 
         self.done_on_target = False
         self.epsilon = 0.01
@@ -108,6 +109,9 @@ class ReacherEnv(gym.Env):
                 self.img = plt.imshow(pixels)
                 plt.axis('off')
             else:
+                if self.ctx is None:
+                    self.ctx = mujoco.GLContext(400, 400)
+                    self.ctx.make_current()
                 self.img.set_data(pixels)
             plt.draw()
             plt.pause(0.000001)

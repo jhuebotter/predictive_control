@@ -8,7 +8,6 @@ env_steps: 200
 render: false
 
 # model parameters
-memory_size: 1_000
 policy:
   model:
     type: MLPPB
@@ -31,15 +30,16 @@ transition:
       lr: 0.001
 
 # training parameters
-total_env_steps: 4_000
-episodes_per_iteration: 2
-updates_per_iteration: 2
-batch_size: 256
+memory_size: 1_024
+total_env_steps: 4_000_000
+episodes_per_iteration: 10
+updates_per_iteration: 10
+batch_size: 1_024
 beta: 0.0
 unroll_steps: 20
 warmup: 30
-record_every_n_iterations: 1
-record_first_n_episodes: 2
+record_every_n_iterations: 20
+record_first_n_episodes: 6
 
 # logging parameters
 project: ann-control

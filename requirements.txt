@@ -1,9 +1,8 @@
-torch
+pytorch
 matplotlib
 wandb
 omegaconf
-pyyaml
 gym
-mujoco
 dm-control
 pygame
+ffmpeg # conda install -c conda-forge ffmpeg

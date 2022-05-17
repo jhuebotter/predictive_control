@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from utils import ReplayMemory, reparameterize as rp
+from utils import ReplayMemory, reparameterize as rp, gradnorm
 from tqdm import tqdm
 from extratyping import *
 
@@ -11,6 +11,7 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
     """function used to update the parameters of a probabilistic transition network"""
 
     losses = []
+    grad_norms = []
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
 
@@ -40,11 +41,12 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
 
         optimizer.zero_grad()
         loss.backward()
+        grad_norms.append(gradnorm(transition_model))
         optimizer.step()
 
         pbar.set_postfix_str(f'loss: {loss.item()}')
 
-    return {'transition model loss': np.mean(losses)}
+    return {'transition model loss': np.mean(losses), 'transition model grad norm': np.mean(grad_norms)}
 
 
 def train_policynetPB(policy_model: Module, transition_model: Module, memory: ReplayMemory,
@@ -56,6 +58,8 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
     action_losses = []
     reg_losses = []
     loss_gain = torch.tensor(loss_gain).to(next(policy_model.parameters()).device)
+
+    grad_norms = []
 
     # TODO: this should be parameter somewhere
     action_target_std = 0.01
@@ -131,6 +135,7 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
         action_losses.append(action_loss_.item())
         reg_losses.append(reg_loss_.item())
         loss.backward()
+        grad_norms.append(gradnorm(policy_model))
         optimizer.step()
 
         pbar.set_postfix_str(f'loss: {loss.item()}')
@@ -138,7 +143,8 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
     return {
         'policy model loss': np.mean(losses),
         'policy model action loss': np.mean(action_losses),
-        'policy model reg loss': np.mean(reg_losses)
+        'policy model reg loss': np.mean(reg_losses),
+        'policy model grad norm': np.mean(grad_norms)
     }
 
 

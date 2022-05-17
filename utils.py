@@ -205,3 +205,18 @@ def dict_mean(dict_list: list[dict]) -> dict:
         mean_dict[key] = np.mean([d[key] for d in dict_list], axis=0)
     
     return mean_dict
+
+
+def gradnorm(model: torch.nn.Module) -> float:
+    """calculates the total L2 norm of gradients for a model.
+    This function was taken 1:1 from the pytoch forum:
+    https://discuss.pytorch.org/t/check-the-norm-of-gradients/27961/2"""
+
+    total_norm = 0
+    parameters = [p for p in model.parameters() if p.grad is not None and p.requires_grad]
+    for p in parameters:
+        param_norm = p.grad.detach().data.norm(2)
+        total_norm += param_norm.item() ** 2
+    total_norm = total_norm ** 0.5
+
+    return total_norm

@@ -3,7 +3,7 @@ seed: 42
 experiment: debug
 
 # task parameters
-task: reacher
+task: plane
 env_steps: 200
 render: false
 
@@ -31,7 +31,7 @@ transition:
 
 # training parameters
 memory_size: 1_024
-total_env_steps: 4_000_000
+total_env_steps: 2_000_000
 episodes_per_iteration: 10
 updates_per_iteration: 10
 batch_size: 1_024

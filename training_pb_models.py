@@ -59,6 +59,10 @@ episode_count = 1
 transitionnet_updates = 0
 policynet_updates = 0
 iteration = 1
+
+best_transition_loss = np.inf
+best_policy_loss = np.inf
+
 while step <= config['total_env_steps']:
     # record a bunch of episodes to memory
 
@@ -134,8 +138,14 @@ while step <= config['total_env_steps']:
     policynet_updates += config['updates_per_iteration']
 
     # save the model parameters
-    save_checkpoint(policynet, opt_policy, path=Path(run_dir, 'policynet_latest.cpt'))
     save_checkpoint(transitionnet, opt_trans, path=Path(run_dir, 'transitionnet_latest.cpt'))
+    if transition_results['transition model loss'] < best_transition_loss:
+        best_transition_loss = transition_results['transition model loss']
+        save_checkpoint(transitionnet, opt_trans, path=Path(run_dir, 'transitionnet_best.cpt'))
+    save_checkpoint(policynet, opt_policy, path=Path(run_dir, 'policynet_latest.cpt'))
+    if policy_results['policy model loss'] < best_policy_loss:
+        best_policy_loss = policy_results['policy model loss']
+        save_checkpoint(policynet, opt_trans, path=Path(run_dir, 'policynet_best.cpt'))
 
     # log the iteration results
     data = {'environment step': step, 'episode': episode_count, 'iteration': iteration,

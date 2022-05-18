@@ -183,6 +183,39 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     return policynet
 
 
+def make_policy_adaptation_model(env: gym.Env, config: dict, verbose: bool = True) -> Module:
+    """create a policy network according to the parameters specified by the config file and task"""
+
+    action_dim = env.action_space.shape[0]
+
+    type_ = config['type'].lower()
+    params = dict(**config['params'])
+    if type_ == 'mlp':
+        from src.models.ANN_models import PolicyAdaptationNet
+        model = PolicyAdaptationNet
+    else:
+        raise NotImplementedError(f"the policy model {type_} is not implemented")
+
+    if params['act_func'] == 'relu':
+        params['act_func'] = F.relu
+    elif params['act_func'] == 'lrelu':
+        params['act_func'] = F.leaky_relu
+    elif params['act_func'] == 'sigmoid':
+        params['act_func'] = torch.sigmoid
+    elif params['act_func'] == 'none':
+        params['act_func'] = None
+    else:
+        raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+
+    policynet = model(
+        action_dim=action_dim,
+        **params
+    )
+    if verbose: print(policynet)
+
+    return policynet
+
+
 def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimizer:
     """make an optimizer for a model"""
 
@@ -201,9 +234,10 @@ def dict_mean(dict_list: list[dict]) -> dict:
     """for a list of dicts with the same keys and numeric values return a dict with the same keys and averaged values"""
     
     mean_dict = {}
-    for key in dict_list[0].keys():
-        mean_dict[key] = np.mean([d[key] for d in dict_list], axis=0)
-    
+    if len(dict_list) > 0:
+        for key in dict_list[0].keys():
+            mean_dict[key] = np.mean([d[key] for d in dict_list], axis=0)
+
     return mean_dict
 
 

@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from src.models.leakyRNN import LRNN
 from extratyping import *
 
+# TODO: add tanh after mu?
 
 class StatefulModel(Module):
     """Base class for models with a hidden stat """
@@ -61,6 +62,40 @@ class PolicyNet(StatefulModel):
         x = self.act_func(x)
 
         return torch.tanh(self.fc2(x))
+
+
+class PolicyAdaptationNet(StatefulModel):
+    """deterministic MLP policy adaptation network"""
+
+    def __init__(self, action_dim: int, bias: bool = True,
+                 act_func: Callable = None, **kwargs) -> None:
+        super().__init__()
+
+        self.bias = bias
+        self.fc1 = nn.Linear(action_dim, action_dim, self.bias)
+        self.act_func = act_func
+        self.reset_weights()
+
+    def reset_weights(self):
+
+        if self.bias:
+            self.fc1.bias.data.fill_(0.0)
+        self.fc1.weight.data.fill_(0.0)
+
+    def get_weights(self):
+
+        if not self.bias:
+            return self.fc1.weight.data
+
+        return self.fc1.weight.data, self.fc1.bias.data
+
+    def forward(self, action: Tensor) -> Tensor:
+
+        x = self.fc1(action)
+        if self.act_func is not None:
+            x = self.act_func(x)
+
+        return x
 
 
 class TransitionNetGRU(StatefulModel):
@@ -212,7 +247,7 @@ class PolicyNetPB(StatefulModel):
         mu = self.fc_mu(x)
         logvar = self.fc_var(x)
 
-        return mu, logvar
+        return torch.tanh(mu), logvar
 
 
 class TransitionNetGRUPB(StatefulModel):
@@ -268,7 +303,7 @@ class PolicyNetGRUPB(StatefulModel):
         mu = self.fc_mu(x)
         logvar = self.fc_var(x)
 
-        return mu, logvar
+        return torch.tanh(mu), logvar
 
 
 class TransitionNetLRNNPB(StatefulModel):
@@ -322,4 +357,4 @@ class PolicyNetLRNNPB(StatefulModel):
         mu = self.fc_mu(x)
         logvar = self.fc_var(x)
 
-        return mu, logvar
+        return torch.tanh(mu), logvar

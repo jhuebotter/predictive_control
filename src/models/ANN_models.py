@@ -4,8 +4,6 @@ import torch.nn.functional as F
 from src.models.leakyRNN import LRNN
 from extratyping import *
 
-# TODO: add tanh after mu?
-
 class StatefulModel(Module):
     """Base class for models with a hidden stat """
 

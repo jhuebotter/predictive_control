@@ -26,6 +26,7 @@ class TwoDPlaneEnv(gym.Env):
         self.max_action = 1.0
         self.force_mag = 5.0
         self.drag = 0.0
+        self.angle = 0.0
 
         self.max_pos = 1.0
         self.min_pos = -self.max_pos
@@ -37,6 +38,7 @@ class TwoDPlaneEnv(gym.Env):
         self.done_on_edge = False
 
         self.random_target = True
+        self.moving_target = 0.5
         self.done_on_target = False
         self.epsilon = 0.05
 
@@ -70,6 +72,7 @@ class TwoDPlaneEnv(gym.Env):
 
         self.state = None
         self.target = None
+        self.target_angle = None
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -86,10 +89,18 @@ class TwoDPlaneEnv(gym.Env):
 
         return x, dx
 
+    def rotate(self, vec, deg):
+        rad = deg * np.pi / 180
+        r = np.array([[np.cos(rad), -np.sin(rad)],
+                      [np.sin(rad),  np.cos(rad)]])
+        return vec @ r
+
     def stepPhysics(self, action):
 
         pos = self.state[:2]  # get last position
         vel = self.state[2:]  # get last velocity
+
+        action = self.rotate(action, self.angle)
 
         # get change in state since last update
         dpdt = vel
@@ -108,6 +119,16 @@ class TwoDPlaneEnv(gym.Env):
 
         return np.hstack([pos, vel])
 
+    def stepTarget(self):
+
+        pos = self.target[:2]
+        vel = self.target[2:]
+
+        pos += vel * self.dt
+        vel = self.rotate(vel, self.target_angle * self.dt)
+
+        self.target = np.hstack([pos, vel])
+
     def step(self, action):
         assert self.action_space.contains(action), \
             "%r (%s) invalid" % (action, type(action))
@@ -115,6 +136,7 @@ class TwoDPlaneEnv(gym.Env):
 
         self.state = np.array(self.stepPhysics(action))
         self.state = np.random.normal(self.state, self.process_noise_std)
+        self.stepTarget()
 
         # stop when position reaches edge of state space
         if self.stop_on_edge:
@@ -153,6 +175,11 @@ class TwoDPlaneEnv(gym.Env):
             self.target = np.zeros(4)
             if self.random_target:
                 self.target[:2] = self.np_random.uniform(low=0.8*self.min_pos, high=0.8*self.max_pos, size=(2,))
+                if self.np_random.rand() < self.moving_target:
+                    self.target[2:] = self.np_random.uniform(low=-0.5, high=0.5, size=(2,))
+                    self.target_angle = self.np_random.uniform(low=30, high=180)
+                    if self.np_random.rand() < 0.5:
+                        self.target_angle *= -1
         else:
             self.target = target
 
@@ -175,6 +202,9 @@ class TwoDPlaneEnv(gym.Env):
 
         tar_x = self.target[0] * center_x + center_x
         tar_y = self.target[1] * center_y + center_y
+
+        tar_vel_x = self.target[2] * screen_width / 10
+        tar_vel_y = self.target[3] * screen_height / 10
 
         if self.screen is None:
             pygame.init()
@@ -213,7 +243,10 @@ class TwoDPlaneEnv(gym.Env):
             (end[0] + trirad * math.sin(math.radians(rotation + 120)),
              end[1] + trirad * math.cos(math.radians(rotation + 120)))))
 
-        draw_arrow(self.surf, BLACK, (pos_x, pos_y), (pos_x + vel_x, pos_y + vel_y), screen_width//100, screen_width//200)
+        if np.any(self.state[2:]):
+            draw_arrow(self.surf, BLACK, (pos_x, pos_y), (pos_x + vel_x, pos_y + vel_y), screen_width//100, screen_width//200)
+        if np.any(self.target[2:]):
+            draw_arrow(self.surf, BLACK, (tar_x, tar_y), (tar_x + tar_vel_x, tar_y + tar_vel_y), screen_width//100, screen_width//200)
 
         self.screen.blit(self.surf, (0, 0))
         if mode == "human":

@@ -28,10 +28,10 @@ def save_checkpoint(model: Module, optimizer: torch.optim.Optimizer = None, step
     torch.save(checkpoint, path)
 
 
-def load_checkpoint(path: str) -> dict:
+def load_checkpoint(path: str, device: str = 'cpu') -> dict:
     """load model parameters from disk"""
 
-    return torch.load(path)
+    return torch.load(path, map_location=torch.device(device))
 
 
 class ReplayMemory:

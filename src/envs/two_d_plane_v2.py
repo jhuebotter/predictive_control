@@ -42,8 +42,8 @@ class TwoDPlaneEnv(gym.Env):
         self.done_on_target = False
         self.epsilon = 0.05
 
-        self.process_noise_std = np.array([0., 0., 0., 0.])
-        self.observation_noise_std = np.array([0.001, 0.001, 0.001, 0.001])
+        self.process_noise_std = np.array([0., 0., 0., 0., 0., 0.])
+        self.observation_noise_std = np.array([0.001, 0.001, 0.001, 0.001, 0.001, 0.001])
 
         self.gravity = np.array([0., 0.])
 
@@ -54,18 +54,18 @@ class TwoDPlaneEnv(gym.Env):
         )
 
         self.observation_space = spaces.Box(
-            low=np.array([self.min_pos, self.min_pos, self.min_vel, self.min_vel]),
-            high=np.array([self.max_pos, self.max_pos, self.max_vel, self.max_vel])
+            low=np.array([self.min_pos, self.min_pos, self.min_vel, self.min_vel, self.min_action, self.min_action]),
+            high=np.array([self.max_pos, self.max_pos, self.max_vel, self.max_vel, self.max_action, self.max_action])
         )
 
         self.target_space = spaces.Box(
-            low=np.array([self.min_pos, self.min_pos, self.min_vel, self.min_vel]),
-            high=np.array([self.max_pos, self.max_pos, self.max_vel, self.max_vel])
+            low=np.array([self.min_pos, self.min_pos, self.min_vel, self.min_vel, self.min_action, self.min_action]),
+            high=np.array([self.max_pos, self.max_pos, self.max_vel, self.max_vel, self.max_action, self.max_action])
         )
 
-        self.loss_gain = np.array([1., 1., 0., 0.])
+        self.loss_gain = np.array([1., 1., 0., 0., 0., 0.])
 
-        self.state_labels = ['pos x', 'pos y', 'vel x', 'vel y']
+        self.state_labels = ['pos x', 'pos y', 'vel x', 'vel y', 'acc x', 'acc y']
 
         self.seed(seed)
         self.screen = None
@@ -100,19 +100,21 @@ class TwoDPlaneEnv(gym.Env):
     def stepPhysics(self, action):
 
         pos = self.state[:2]  # get last position
-        vel = self.state[2:]  # get last velocity
+        vel = self.state[2:4]  # get last velocity
+        acc = self.state[4:]
 
         action = self.rotate(action, self.angle)
         #print("action in env after rotation", action)
 
         # get change in state since last update
         dpdt = vel
-        dvdt = action * self.force_mag + self.gravity - self.drag * vel**2
+        dvdt = acc * self.force_mag + self.gravity - self.drag * vel**2
         #vel = 0.5**self.dt * vel + dvdt * self.dt
 
         # update state
         pos += dpdt * self.dt
         vel += dvdt * self.dt
+        acc = action
 
         # clip velocity in allowed limits
         vel = np.clip(vel, self.min_vel, self.max_vel)
@@ -120,17 +122,18 @@ class TwoDPlaneEnv(gym.Env):
         if mag_V > self.max_vel:
             vel = vel / mag_V
 
-        return np.hstack([pos, vel])
+        return np.hstack([pos, vel, acc])
 
     def stepTarget(self):
 
         pos = self.target[:2]
-        vel = self.target[2:]
+        vel = self.target[2:4]
+        acc = self.target[4:]
 
         pos += vel * self.dt
         vel = self.rotate(vel, self.target_angle * self.dt)
 
-        self.target = np.hstack([pos, vel])
+        self.target = np.hstack([pos, vel, acc])
 
     def step(self, action):
         assert self.action_space.contains(action), \
@@ -175,17 +178,17 @@ class TwoDPlaneEnv(gym.Env):
     def reset(self, state=None, target=None):
         self.episode_step_count = 0
         if state is None:
-            self.state = np.zeros(4)
+            self.state = np.zeros(6)
             self.state[:2] = self.np_random.uniform(low=0.8*self.min_pos, high=0.8*self.max_pos, size=(2,))
         else:
             self.state = state
 
         if target is None:
-            self.target = np.zeros(4)
+            self.target = np.zeros(6)
             if self.random_target:
                 self.target[:2] = self.np_random.uniform(low=0.8*self.min_pos, high=0.8*self.max_pos, size=(2,))
                 if self.np_random.rand() < self.moving_target:
-                    self.target[2:] = self.np_random.uniform(low=-0.5, high=0.5, size=(2,))
+                    self.target[2:4] = self.np_random.uniform(low=-0.5, high=0.5, size=(2,))
                     self.target_angle = self.np_random.uniform(low=30, high=180)
                     if self.np_random.rand() < 0.5:
                         self.target_angle *= -1
@@ -305,3 +308,14 @@ class TwoDPlaneEnvSimple(TwoDPlaneEnv):
             vel = vel / mag_V
 
         return np.hstack([pos, vel])
+
+
+if __name__ == '__main__':
+    env = TwoDPlaneEnv()
+    env.reset()
+    env.render()
+    for i in range(100):
+        a = env.action_space.sample()
+        env.step(a)
+        env.render()
+    env.close()

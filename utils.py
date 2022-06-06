@@ -80,6 +80,10 @@ def make_env(config: dict) -> gym.Env:
         print('loading 2d plane task')
         from src.envs.two_d_plane import TwoDPlaneEnv
         env = TwoDPlaneEnv(seed, max_episode_steps=config['env_steps'])
+    elif task == 'plane2':
+        print('loading 2d plane task')
+        from src.envs.two_d_plane_v2 import TwoDPlaneEnv
+        env = TwoDPlaneEnv(seed, max_episode_steps=config['env_steps'])
     else:
         raise NotImplementedError(f'the task {task} is not implemented')
 

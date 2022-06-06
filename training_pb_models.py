@@ -5,7 +5,7 @@ from pathlib import Path
 from utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, dict_mean, \
     reparameterize as rp
 from training_functions import train_policynetPB, train_transitionnetRNNPBNLL, baseline_prediction
-from plotting import render_video
+from plotting import render_video, animate_predictions
 from config import get_config, save_config
 from tqdm import tqdm
 import wandb
@@ -124,8 +124,11 @@ while step <= config['total_env_steps']:
 
     # render video and save to disk
     if len(frames):
-        render_video(frames, env.metadata['render_fps'], save=Path(run_dir, f'animation_{iteration}.mp4'))
-        wandb.log({f'animation': wandb.Video(str(Path(run_dir, f'animation_{iteration}.mp4')))}, step=iteration)
+        render_video(frames, env.metadata['render_fps'], save=Path(run_dir, f'episode_animation_{iteration}.mp4'))
+        animate_predictions(episode, transitionnet, env.state_labels, save=Path(run_dir, f'prediction_animation_{iteration}.mp4'))
+        wandb.log({f'episode animation': wandb.Video(str(Path(run_dir, f'episode_animation_{iteration}.mp4'))),
+                   f'prediction animation': wandb.Video(str(Path(run_dir, f'prediction_animation_{iteration}.mp4')))},
+                  step=iteration)
 
     # update transition and policy models based on data in memory
     transition_results = train_transitionnetRNNPBNLL(transitionnet, memory, opt_trans, config['batch_size'],

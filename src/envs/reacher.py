@@ -48,6 +48,8 @@ class ReacherEnv(gym.Env):
         self.img = None
         self.ctx = None
 
+        self.state_labels = ['hand x', 'hand y', 'cos a1', 'cos a2', 'sin a1', 'sin a2', 'vel a1', 'vel a2']
+
         self.done_on_target = False
         self.epsilon = 0.01
 

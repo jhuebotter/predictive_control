@@ -70,7 +70,8 @@ class PolicyAdaptationNet(StatefulModel):
         super().__init__()
 
         self.bias = bias
-        self.fc1 = nn.Linear(action_dim, action_dim, self.bias)
+        self.action_dim = action_dim
+        self.fc1 = nn.Linear(self.action_dim, self.action_dim, self.bias)
         self.act_func = act_func
         self.reset_weights()
 
@@ -78,7 +79,12 @@ class PolicyAdaptationNet(StatefulModel):
 
         if self.bias:
             self.fc1.bias.data.fill_(0.0)
-        self.fc1.weight.data.fill_(0.0)
+        #self.fc1.weight.data.fill_(0.0)
+        self.fc1.weight.data = torch.eye(self.action_dim)
+        #self.fc1.weight.data = torch.tensor(
+        #    [[0.40808206,  0.91294525],
+        #     [-0.91294525,  0.40808206]]
+        #)
 
     def get_weights(self):
 

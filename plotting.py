@@ -127,8 +127,8 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, h: i
     plt.rcParams['font.size'] = '12'
 
     predictions = make_predictions(episode, transitionnet, h)
-    predictions = predictions.detach().numpy()
-    next_observations = [step[3] for step in episode]
+    predictions = predictions.detach().cpu().numpy()
+    next_observations = [step[3].cpu().numpy() for step in episode]
 
     n, h, d = predictions.shape
 

@@ -74,7 +74,7 @@ while step <= config['total_env_steps']:
     baseline_predictions = []
 
     for e in tqdm(range(1, config['episodes_per_iteration'] + 1), desc=f"{'obtaining experience':30}"):
-        if e < config['record_first_n_episodes'] + 1 and iteration % config['record_every_n_iterations'] == 0:
+        if e < config['record_first_n_episodes'] + 1 and (iteration % config['record_every_n_iterations'] == 0 or iteration == 1):
             render_mode = 'rgb_array'
         else:
             render_mode = None

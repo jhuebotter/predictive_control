@@ -124,15 +124,15 @@ def make_predictions(episode: list, transitionnet: Module, h: int = 100) -> Tens
 
 def animate_predictions(episode: list, transitionnet: Module, labels: list, h: int = 100, fps: float = 20.,
                         save: Optional[Union[Path, str]] = './animation.mp4') -> object:
-    plt.rcParams['font.size'] = '12'
+    plt.rcParams['font.size'] = '9'
 
     predictions = make_predictions(episode, transitionnet, h)
     predictions = predictions.detach().cpu().numpy()
-    next_observations = [step[3].cpu().numpy() for step in episode]
+    next_observations = [step[3].squeeze().cpu().numpy() for step in episode]
 
     n, h, d = predictions.shape
 
-    fig, ax = plt.subplots(d, figsize=(5, 4), sharex=True, sharey=True, dpi=100)
+    fig, ax = plt.subplots(d, figsize=(5, 4), sharex=True, sharey=True, dpi=50)
     plt.ylim(-1.1, 1.1)
 
     cmap = plt.get_cmap('plasma')
@@ -144,6 +144,7 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, h: i
         ax[i].plot([o[i] for o in next_observations], c='g', alpha=0.5)
         ax[i].set_ylabel(labels[i])
     ax[-1].set_xlabel('step')
+    plt.tight_layout()
 
     camera.snap()
 
@@ -155,13 +156,14 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, h: i
             ax[i].scatter(np.arange(t, np.min([t + h, n])), predictions[t, :max_, i], c=cmap(idx[:max_]), s=4)
             ax[i].plot([o[i] for o in next_observations], c='g', alpha=0.5)
 
+        plt.tight_layout()
         camera.snap()
 
-    animation = camera.animate(interval=1000. / fps)
+    animation = camera.animate(interval=1000. / fps, blit=True)
     plt.close()
 
     if save:
-        animation.save(save)
+        animation.save(save, bitrate=-1)
 
     return animation
 

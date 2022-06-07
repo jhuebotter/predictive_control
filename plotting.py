@@ -163,7 +163,7 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, h: i
     plt.close()
 
     if save:
-        animation.save(save, bitrate=-1)
+        animation.save(save) #, bitrate=-1)
 
     return animation
 

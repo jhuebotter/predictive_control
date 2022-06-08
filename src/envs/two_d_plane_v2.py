@@ -153,14 +153,15 @@ class TwoDPlaneEnv(gym.Env):
 
         done = False
         on_target = False
-        if np.allclose(self.state[~np.isnan(self.target)], self.target[~np.isnan(self.target)], atol=self.epsilon):
+        #if np.allclose(self.state[~np.isnan(self.target)], self.target[~np.isnan(self.target)], atol=self.epsilon):
+        if np.allclose(self.state[:4], self.target[:4], atol=self.epsilon):
             on_target = True
             if self.done_on_target:
                 #self.reset(state=self.state)
                 done = True
 
         on_edge = False
-        if np.min(self.state) <= self.min_pos or np.max(self.state) >= self.max_pos:
+        if np.min(self.state[:2]) <= self.min_pos or np.max(self.state[:2]) >= self.max_pos:
             on_edge = True
             if self.done_on_edge:
                 done = True

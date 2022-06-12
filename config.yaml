@@ -27,7 +27,7 @@ transition:
   optim:
     type: adam
     params:
-      lr: 0.0005
+      lr: 0.001
 
 # training parameters
 memory_size: 1_024

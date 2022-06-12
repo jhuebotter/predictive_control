@@ -63,8 +63,19 @@ iteration = 1
 best_transition_loss = np.inf
 best_policy_loss = np.inf
 
+have_done_update = False
+
 while step <= config['total_env_steps']:
     # record a bunch of episodes to memory
+
+    # TODO: THIS IS ONLY A TEMPORARY HARDCODED TEST BECAUSE I AM LAZY!
+    if step > config['total_env_steps'] / 2 and not have_done_update:
+        for g in opt_trans.param_groups:
+            g['lr'] = config['transition']['optim']['lr'] / np.sqrt(config['batch_size'])
+        for g in opt_policy.param_groups:
+            g['lr'] = config['policy']['optim']['lr'] / np.sqrt(config['batch_size'])
+        config['batch_size'] = 1
+        have_done_update = True
 
     print()
     print(f'beginning iteration {iteration}')

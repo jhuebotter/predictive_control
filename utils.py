@@ -5,8 +5,7 @@ import numpy as np
 from extratyping import *
 
 
-def save_checkpoint(model: Module, optimizer: torch.optim.Optimizer = None, step: int = None,
-                    loss: float = None, path: str = "model_checkpoint.cpt") -> None:
+def save_checkpoint(model: Module, optimizer: Optimizer = None, path: str = "model_checkpoint.cpt", **kwargs) -> None:
     """save model parameters to disk"""
 
     checkpoint = {
@@ -16,14 +15,12 @@ def save_checkpoint(model: Module, optimizer: torch.optim.Optimizer = None, step
         checkpoint.update({
             "optimizer_state_dict": optimizer.state_dict()
         })
-    if step is not None:
-        checkpoint.update({
-            "step": step
-        })
-    if loss is not None:
-        checkpoint.update({
-            "loss": loss
-        })
+
+    misc = dict(**kwargs)
+
+    checkpoint.update({
+        "misc": misc
+    })
 
     torch.save(checkpoint, path)
 
@@ -32,6 +29,23 @@ def load_checkpoint(path: str, device: str = 'cpu') -> dict:
     """load model parameters from disk"""
 
     return torch.load(path, map_location=torch.device(device))
+
+
+def load_weights_from_disk(model: Module, path: str, optim: Optional[Optimizer] = None ,device: str = 'cpu') -> \
+        tuple[Module, Optional[Optimizer]]:
+    """update (partial) model parameters based on previous checkpoint"""
+
+    cp = load_checkpoint(path, device)
+    current_weights = model.state_dict()
+    current_weights.update(cp['model_state_dict'])
+    model.load_state_dict(current_weights)
+
+    if optim:
+        current_state = optim.state_dict()
+        current_state.update(cp['optimizer_state_dict'])
+        optim.load_state_dict(current_state)
+
+    return model, optim
 
 
 class ReplayMemory:
@@ -116,6 +130,9 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
     elif type_ == 'lrnnpb':
         from src.models.ANN_models import TransitionNetLRNNPB
         model = TransitionNetLRNNPB
+    elif type_ == 'grupbadapt':
+        from src.models.ANN_models import TransitionNetGRUPBAdaptive
+        model = TransitionNetGRUPBAdaptive
     else:
         raise NotImplementedError(f"the transition model {type_} is not implemented")
 
@@ -158,6 +175,9 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     elif type_ == 'mlppb':
         from src.models.ANN_models import PolicyNetPB
         model = PolicyNetPB
+    elif type_ == 'mlppbadapt':
+        from src.models.ANN_models import PolicyNetPBAdaptive
+        model = PolicyNetPBAdaptive
     elif type_ == 'grupb':
         from src.models.ANN_models import PolicyNetGRUPB
         model = PolicyNetGRUPB
@@ -230,8 +250,11 @@ def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimize
         Opt = torch.optim.SGD
     else:
         raise NotImplementedError(f'The optimizer {optim} is not implemented')
+    if isinstance(model, torch.nn.Module):
+        return Opt(model.parameters(), **config['params'])
+    elif isinstance(model, list):
+        return Opt([l.parameters() for l in model], **config['params'])
 
-    return Opt(model.parameters(), **config['params'])
 
 
 def dict_mean(dict_list: list[dict]) -> dict:

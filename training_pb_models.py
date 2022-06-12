@@ -69,7 +69,7 @@ while step <= config['total_env_steps']:
     # record a bunch of episodes to memory
 
     # TODO: THIS IS ONLY A TEMPORARY HARDCODED TEST BECAUSE I AM LAZY!
-    if step > config['total_env_steps'] / 2 and not have_done_update:
+    if step > config['total_env_steps'] / 2 and not have_done_update and config['switch_flag']:
         for g in opt_trans.param_groups:
             g['lr'] = config['transition']['optim']['lr'] / np.sqrt(config['batch_size'])
         for g in opt_policy.param_groups:

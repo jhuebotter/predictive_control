@@ -364,8 +364,6 @@ class PolicyNetLRNNPB(StatefulModel):
         return torch.tanh(mu), logvar
 
 
-
-
 class AdaptiveModel(StatefulModel):
     def __init__(self):
         super().__init__()
@@ -379,14 +377,6 @@ class AdaptiveModel(StatefulModel):
 
     def get_adaptation_weights(self):
 
-        #weights = []
-        #biases = []
-        #for k, l in self.adaptive_layers.items():
-        #    weights.append(l.weight.data)
-        #    biases.append(l.bias.data if l.bias is not None else None)
-
-        #return weights, biases
-
         return self.adaptive_layers.state_dict()
 
 
@@ -397,13 +387,20 @@ class PolicyNetPBAdaptive(AdaptiveModel):
                  act_func: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 
-        self.fc1 = nn.Linear(state_dim + target_dim, hidden_dim, bias)
-        self.fc_mu = nn.Linear(hidden_dim, action_dim, bias)
-        self.fc_var = nn.Linear(hidden_dim, action_dim, bias)
-        self.basis = [self.fc1, self.fc_mu, self.fc_var]
-        self.fc_mu_adapt = nn.Linear(hidden_dim, action_dim, bias)
-        self.fc_var_adapt = nn.Linear(hidden_dim, action_dim, bias)
-        self.adaptive_layers = [self.fc_mu_adapt, self.fc_var_adapt]
+        #self.fc1 = nn.Linear(state_dim + target_dim, hidden_dim, bias)
+        #self.fc_mu = nn.Linear(state_dim + target_dim, hidden_dim, bias)
+        #self.fc_var = nn.Linear(hidden_dim, action_dim, bias)
+        self.basis = nn.ModuleDict({
+            'fc1': nn.Linear(state_dim + target_dim, hidden_dim, bias),
+            'fc_mu': nn.Linear(state_dim + target_dim, hidden_dim, bias),
+            'fc_var': nn.Linear(state_dim + target_dim, hidden_dim, bias)
+        })
+        #self.fc_mu_adapt = nn.Linear(hidden_dim, action_dim, bias)
+        #self.fc_var_adapt = nn.Linear(hidden_dim, action_dim, bias)
+        self.adaptive_layers = nn.ModuleDict({
+            'fc_mu_adapt': nn.Linear(state_dim + target_dim, hidden_dim, bias),
+            'fc_var_adapt': nn.Linear(state_dim + target_dim, hidden_dim, bias)
+        })
         self.bias = bias
         self.act_func = act_func
         self.reset_adaptation_weights()
@@ -417,10 +414,10 @@ class PolicyNetPBAdaptive(AdaptiveModel):
         if len(target.shape) == 3:
             target.squeeze_(0)
 
-        x = self.fc1(torch.cat((state, target), -1))
+        x = self.basis['fc1'](torch.cat((state, target), -1))
         x = self.act_func(x)
-        mu = self.fc_mu(x) + self.fc_mu_adapt(x)
-        logvar = self.fc_var(x) + self.fc_var_adapt(x)
+        mu = self.basis['fc_mu'](x) + self.adaptive_layers['fc_mu_adapt'](x)
+        logvar = self.basis['fc_var'](x) + self.adaptive_layers['fc_var_adapt'](x)
 
         return torch.tanh(mu), logvar
 

@@ -10,7 +10,7 @@ render: false
 # model parameters
 policy:
   model:
-    type: MLPPBadapt
+    type: MLPPB
     params:
       act_func: 'lrelu'
       hidden_dim: 256
@@ -20,7 +20,7 @@ policy:
       lr: 0.001
 transition:
   model:
-    type: GRUPBadapt
+    type: GRUPB
     params:
       act_func: 'lrelu'
       hidden_dim: 256

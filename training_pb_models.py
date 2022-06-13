@@ -64,6 +64,8 @@ best_transition_loss = np.inf
 best_policy_loss = np.inf
 
 have_done_update = False
+if 'switch_flag' not in config.keys():
+    config['switch_flag'] = False
 
 while step <= config['total_env_steps']:
     # record a bunch of episodes to memory
@@ -71,9 +73,9 @@ while step <= config['total_env_steps']:
     # TODO: THIS IS ONLY A TEMPORARY HARDCODED TEST BECAUSE I AM LAZY!
     if step > config['total_env_steps'] / 2 and not have_done_update and config['switch_flag']:
         for g in opt_trans.param_groups:
-            g['lr'] = config['transition']['optim']['lr'] / np.sqrt(config['batch_size'])
+            g['lr'] = config['transition']['optim']['params']['lr'] / np.sqrt(config['batch_size'])
         for g in opt_policy.param_groups:
-            g['lr'] = config['policy']['optim']['lr'] / np.sqrt(config['batch_size'])
+            g['lr'] = config['policy']['optim']['params']['lr'] / np.sqrt(config['batch_size'])
         config['batch_size'] = 1
         have_done_update = True
 

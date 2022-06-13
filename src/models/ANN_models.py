@@ -392,14 +392,14 @@ class PolicyNetPBAdaptive(AdaptiveModel):
         #self.fc_var = nn.Linear(hidden_dim, action_dim, bias)
         self.basis = nn.ModuleDict({
             'fc1': nn.Linear(state_dim + target_dim, hidden_dim, bias),
-            'fc_mu': nn.Linear(state_dim + target_dim, hidden_dim, bias),
-            'fc_var': nn.Linear(state_dim + target_dim, hidden_dim, bias)
+            'fc_mu': nn.Linear(hidden_dim, action_dim, bias),
+            'fc_var': nn.Linear(hidden_dim, action_dim, bias)
         })
         #self.fc_mu_adapt = nn.Linear(hidden_dim, action_dim, bias)
         #self.fc_var_adapt = nn.Linear(hidden_dim, action_dim, bias)
         self.adaptive_layers = nn.ModuleDict({
-            'fc_mu_adapt': nn.Linear(state_dim + target_dim, hidden_dim, bias),
-            'fc_var_adapt': nn.Linear(state_dim + target_dim, hidden_dim, bias)
+            'fc_mu_adapt': nn.Linear(hidden_dim, action_dim, bias),
+            'fc_var_adapt': nn.Linear(hidden_dim, action_dim, bias)
         })
         self.bias = bias
         self.act_func = act_func

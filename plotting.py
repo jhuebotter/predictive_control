@@ -23,6 +23,10 @@ def plot_trajectories(episodes: list, save: Optional[Union[Path, str]] = '', sho
         xs = [x[0] for x in states[::skip]]
         ys = [x[1] for x in states[::skip]]
 
+        if isinstance(xs[0], torch.Tensor):
+            xs = [x.cpu().numpy() for x in xs]
+            ys = [y.cpu().numpy() for y in ys]
+
         c = np.linspace(0.0, 1.0, len(xs))
         plt.scatter(xs, ys, s=0.5, c=c, cmap=mlp.cm.get_cmap('viridis'))
 

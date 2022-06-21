@@ -1,7 +1,8 @@
 import pandas as pd
 from pathlib import Path
 import collections
-import numpy as np
+import time
+
 
 class PandasLogger(object):
     """Logger class for graphical summary with Weights and Biases"""
@@ -45,8 +46,15 @@ class PandasLogger(object):
                 print("making new results frame")
                 df = pd.DataFrame([])
             df = pd.concat([df, self.result], ignore_index=True)
-            df.to_csv(path, index=False)
-            self.result = pd.DataFrame([])
+            attempts = 0
+            while attempts < 10:
+                try:
+                    df.to_csv(path, index=False)
+                    self.result = pd.DataFrame([])
+                    break
+                except:
+                    attempts += 1
+                    time.sleep(1.0)
 
     def flatten(self, d, parent_key='', sep='.'):
         items = []

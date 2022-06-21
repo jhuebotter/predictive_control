@@ -140,8 +140,6 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
             f'prediction animation eval': wandb.Video(str(Path(run_dir, f'prediction_animation_eval_{step}_{e}.mp4')))
         })
 
-    env.close()
-
     return results
 
 

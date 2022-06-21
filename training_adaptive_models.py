@@ -175,9 +175,10 @@ while step <= config['total_env_steps']:
 
     # evaluate if necessary
     if config['evaluate']:
-        if (iteration % config['record_every_n_iterations'] == 0 or iteration == 1):
+        record = False
+        if (iteration % config['record_every_n_iterations'] == 0 or iteration == 1) and config['animate']:
             record = True
-        eval_results = evalue_adaptive_models(policynet, transitionnet, config['task'], record=config['animate'],
+        eval_results = evalue_adaptive_models(policynet, transitionnet, config['task'], record=record,
                                               device=device, step=iteration, run_dir=run_dir)
         iteration_results.update(eval_results)
 

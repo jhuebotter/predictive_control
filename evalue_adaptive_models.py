@@ -1,6 +1,6 @@
 from tqdm import tqdm
 import torch
-from utils import reparameterize as rp, make_env, dict_mean
+from utils import make_env, dict_mean
 from training_functions import baseline_prediction
 from plotting import animate_predictions, render_video, plot_trajectories
 from extratyping import *

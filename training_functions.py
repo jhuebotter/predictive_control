@@ -158,7 +158,7 @@ def baseline_prediction(transitionnet: Module, episode: list) -> dict:
     next_states = torch.stack([step[4] for step in episode])
 
     # predict next state based on action with transition net
-    delta_states = rp(*transitionnet(states, actions))
+    delta_states = transitionnet.predict(states, actions, deterministic=True)
     predicted_states = states + delta_states.detach()
     predicted_state_mse = torch.pow(predicted_states - next_states, 2).mean()
     #print("predicted state MSE:", predicted_state_mse.item())

@@ -37,8 +37,12 @@ def load_weights_from_disk(model: Module, path: str, optim: Optional[Optimizer] 
 
     cp = load_checkpoint(path, device)
     current_weights = model.state_dict()
-    current_weights.update(cp['model_state_dict'])
-    model.load_state_dict(current_weights)
+    new_weights = {**current_weights}
+    new_weights.update(**cp['model_state_dict'])
+    model.load_state_dict(new_weights)
+
+    #for k, v in model.state_dict().items():
+    #    print(k, torch.all(torch.eq(current_weights[k], v)))
 
     if optim:
         current_state = optim.state_dict()
@@ -77,27 +81,26 @@ def reparameterize(mu: Tensor, logvar: Tensor) -> Tensor:
     return eps * std + mu
 
 
-def make_env(config: dict) -> gym.Env:
+def make_env(config: dict, seed: int = 0) -> gym.Env:
     """create an environment object containing the task"""
 
-    task = config['task']
-    seed = config['seed']
+    task = config['type']
     if task == 'reacher':
         print('loading 2d reacher task')
         from src.envs.reacher import ReacherEnv
-        env = ReacherEnv(seed, max_episode_steps=config['env_steps'])
+        env = ReacherEnv(seed, **config['params'])
     elif task == 'plane_simple':
         print('loading simple 2d plane task')
         from src.envs.two_d_plane import TwoDPlaneEnvSimple
-        env = TwoDPlaneEnvSimple(seed, max_episode_steps=config['env_steps'])
+        env = TwoDPlaneEnvSimple(seed, **config['params'])
     elif task == 'plane':
         print('loading 2d plane task')
         from src.envs.two_d_plane import TwoDPlaneEnv
-        env = TwoDPlaneEnv(seed, max_episode_steps=config['env_steps'])
+        env = TwoDPlaneEnv(seed, **config['params'])
     elif task == 'plane2':
         print('loading 2d plane task')
         from src.envs.two_d_plane_v2 import TwoDPlaneEnv
-        env = TwoDPlaneEnv(seed, max_episode_steps=config['env_steps'])
+        env = TwoDPlaneEnv(seed, **config['params'])
     else:
         raise NotImplementedError(f'the task {task} is not implemented')
 

@@ -14,12 +14,14 @@ class ReacherEnv(gym.Env):
         'render_fps': 50
     }
 
-    def __init__(self, seed: int = None, max_episode_steps: int = 200):
+    def __init__(self, seed: int = None, max_episode_steps: int = 200, rl_mode: bool = False, **kwargs):
 
         random_state = np.random.RandomState(seed)
         self.env = suite.load('reacher', 'hard', task_kwargs={'random': random_state})
         self.max_episode_steps = max_episode_steps
         self.observation_noise_std = np.array([0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001])
+
+        self.rl_mode = rl_mode
 
         self.action_space = spaces.Box(
             low=self.env.action_spec().minimum,
@@ -66,20 +68,36 @@ class ReacherEnv(gym.Env):
 
         self.state = np.hstack([handxy, np.sin(jointsradpos), np.cos(jointsradpos), jointsradvel / 6.])
 
-        target = np.zeros(self.state.shape)
-        target[:2] = targetxy
-        target[2:] = self.state[2:]
+        self.target = np.zeros(self.state.shape)
+        self.target[:2] = targetxy
+        self.target[2:] = self.state[2:]  # TODO: THIS IS SUPER WEIRD...
 
         done = False
-        if self.episode_step_count == self.max_episode_steps:
-            done = True
-        if self.done_on_target:
-            if np.allclose(self.state[:2], target[:2], atol=self.epsilon):
+        on_target = False
+        # if np.allclose(self.state[~np.isnan(self.target)], self.target[~np.isnan(self.target)], atol=self.epsilon):
+        if np.allclose(self.state[:4], self.target[:4], atol=self.epsilon):
+            on_target = True
+            if self.done_on_target:
+                # self.reset(state=self.state)
                 done = True
+
+        max_steps = False
+        if self.max_episode_steps and self.episode_step_count == self.max_episode_steps:
+            done = True
+            max_steps = True
 
         observation = np.random.normal(self.state, self.observation_noise_std)
 
-        return observation, target, done, {}
+        reward = - np.linalg.norm(self.target[:2] - self.state[:2]) * self.dt
+
+        info = {'on_target': on_target, 'max_steps': max_steps}
+
+        if not self.rl_mode:
+            return observation, self.target, reward, done, info
+
+        else:
+            s = np.hstack(observation, self.target)
+            return s, reward, done, info
 
     def reset(self, state=None, target=None):
 
@@ -94,13 +112,17 @@ class ReacherEnv(gym.Env):
 
         self.state = np.hstack([handxy, np.sin(jointsradpos), np.cos(jointsradpos), jointsradvel / 6.])
 
-        target = np.zeros(self.state.shape)
-        target[:2] = targetxy
-        target[2:] = self.state[2:]
+        self.target = np.zeros(self.state.shape)
+        self.target[:2] = targetxy
+        self.target[2:] = self.state[2:]
 
         observation = np.random.normal(self.state, self.observation_noise_std)
 
-        return observation, target
+        if not self.rl_mode:
+            return observation, self.target
+        else:
+            s = np.hstack(observation, self.target)
+            return s
 
     def render(self, mode="human"):
 

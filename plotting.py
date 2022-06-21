@@ -11,6 +11,32 @@ from extratyping import *
 plt.rcParams['font.size'] = '12'
 
 
+def plot_trajectories(episodes: list, save: Optional[Union[Path, str]] = '', show: bool = False, skip: int = 2):
+
+    fig = plt.figure(figsize=(3, 3))
+    plt.xlim(-1.05, 1.05)
+    plt.ylim(-1.05, 1.05)
+    plt.axis('off')
+
+    for e in episodes:
+        states = [s[0].squeeze() for s in e]
+        xs = [x[0] for x in states[::skip]]
+        ys = [x[1] for x in states[::skip]]
+
+        c = np.linspace(0.0, 1.0, len(xs))
+        plt.scatter(xs, ys, s=0.5, c=c, cmap=mlp.cm.get_cmap('viridis'))
+
+    plt.tight_layout()
+
+    if save:
+        plt.savefig(save)
+    if show:
+        plt.show()
+    plt.close()
+
+    return
+
+
 def plot_curves(data=dict[str: list[array]], logy: bool = True, show: bool = False,
                 save: Optional[Union[Path, str]] = 'curve.png') -> None:
     """create a plot from a dictionary of lists and save to disk"""
@@ -128,7 +154,7 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, h: i
 
     predictions = make_predictions(episode, transitionnet, h)
     predictions = predictions.detach().cpu().numpy()
-    next_observations = [step[3].squeeze().cpu().numpy() for step in episode]
+    next_observations = [step[4].squeeze().cpu().numpy() for step in episode]
 
     n, h, d = predictions.shape
 

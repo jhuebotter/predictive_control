@@ -18,7 +18,8 @@ class TwoDPlaneEnv(gym.Env):
         'render_fps': 50
     }
 
-    def __init__(self, seed: int = None, max_episode_steps: int = 200):
+    def __init__(self, seed: int = None, max_episode_steps: int = 200, rl_mode: bool = False,
+                 moving_target: float = 0.0, angle: float = 0.0, **kwargs):
 
         self.dt = 0.02  # seconds between state updates
         self.max_episode_steps = max_episode_steps
@@ -26,7 +27,9 @@ class TwoDPlaneEnv(gym.Env):
         self.max_action = 1.0
         self.force_mag = 5.0
         self.drag = 0.0
-        self.angle = 0.0
+        self.angle = angle
+
+        self.rl_mode = rl_mode
 
         self.max_pos = 1.0
         self.min_pos = -self.max_pos
@@ -38,7 +41,7 @@ class TwoDPlaneEnv(gym.Env):
         self.done_on_edge = False
 
         self.random_target = True
-        self.moving_target = 0.5
+        self.moving_target = moving_target
         self.done_on_target = False
         self.epsilon = 0.05
 
@@ -107,7 +110,7 @@ class TwoDPlaneEnv(gym.Env):
 
         # get change in state since last update
         dpdt = vel
-        dvdt = action * self.force_mag + self.gravity - self.drag * vel**2
+        dvdt = action * self.force_mag # + self.gravity - self.drag * vel**2
         #vel = 0.5**self.dt * vel + dvdt * self.dt
 
         # update state
@@ -116,6 +119,7 @@ class TwoDPlaneEnv(gym.Env):
 
         # clip velocity in allowed limits
         vel = np.clip(vel, self.min_vel, self.max_vel)
+        # normalize velocity if necessary
         mag_V = np.sqrt(np.sum(np.square(vel)))
         if mag_V > self.max_vel:
             vel = vel / mag_V
@@ -167,10 +171,17 @@ class TwoDPlaneEnv(gym.Env):
             done = True
             max_steps = True
 
+        reward = - np.linalg.norm(self.target[:2] - self.state[:2]) * self.dt
+
         observation = np.random.normal(self.state, self.observation_noise_std)
 
-        return observation, self.target, done, {'on_target': on_target, 'on_edge': on_edge, 'max_steps': max_steps}
+        info = {'on_target': on_target, 'on_edge': on_edge, 'max_steps': max_steps}
 
+        if not self.rl_mode:
+            return observation, self.target, reward, done, info
+        else:
+            s = np.hstack(observation, self.target)
+            return s, reward, done, info
 
     def reset(self, state=None, target=None):
         self.episode_step_count = 0
@@ -194,7 +205,11 @@ class TwoDPlaneEnv(gym.Env):
 
         observation = np.random.normal(self.state, self.observation_noise_std)
 
-        return observation, self.target
+        if not self.rl_mode:
+            return observation, self.target
+        else:
+            s = np.hstack(observation, self.target)
+            return s
 
     def render(self, mode="human"):
         screen_width = 400
@@ -283,8 +298,8 @@ class TwoDPlaneEnvSimple(TwoDPlaneEnv):
         'video.frames_per_second': 50
     }
 
-    def __init__(self, seed: int = None, max_episode_steps: int = 200):
-        super(TwoDPlaneEnvSimple, self).__init__(seed, max_episode_steps)
+    def __init__(self, seed: int = None, **kwargs):
+        super(TwoDPlaneEnvSimple, self).__init__(seed, **kwargs)
         self.force_mag = 1.0
 
 

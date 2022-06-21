@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from src.models.leakyRNN import LRNN
 from extratyping import *
+from utils import reparameterize as rp
 
 class StatefulModel(Module):
     """Base class for models with a hidden stat """
@@ -421,6 +422,14 @@ class PolicyNetPBAdaptive(AdaptiveModel):
 
         return torch.tanh(mu), logvar
 
+    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False):
+
+        mu, logvar = self.forward(state, target)
+
+        if deterministic:
+            return mu
+        else:
+            return rp(mu, logvar)
 
 class TransitionNetGRUPBAdaptive(AdaptiveModel):
     """probabilistic RNN transition network"""
@@ -462,3 +471,12 @@ class TransitionNetGRUPBAdaptive(AdaptiveModel):
         logvar = self.basis['fc_var'](x) + self.adaptive_layers['fc_var_adapt'](x)
 
         return mu, logvar
+
+    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False):
+
+        mu, logvar = self.forward(state, target)
+
+        if deterministic:
+            return mu
+        else:
+            return rp(mu, logvar)

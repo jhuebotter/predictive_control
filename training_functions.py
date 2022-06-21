@@ -7,7 +7,7 @@ from extratyping import *
 
 
 def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, optimizer: torch.optim.Optimizer,
-                           batch_size: int, warmup_steps: int = 20, n_batches: int = 1):
+                           batch_size: int, warmup_steps: int = 20, n_batches: int = 1, **kwargs):
     """function used to update the parameters of a probabilistic transition network"""
 
     losses = []
@@ -18,12 +18,12 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
         maxlen = -1
         while maxlen <= warmup_steps:
             # TODO: find better solution for this!
-            episode_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, next_state)]
+            episode_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, reward, next_state)]
             maxlen = min([len(e) for e in episode_batch])
 
         state_batch = torch.stack([torch.stack([step[0].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
         action_batch = torch.stack([torch.stack([step[2].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
-        next_state_batch = torch.stack([torch.stack([step[3].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
+        next_state_batch = torch.stack([torch.stack([step[4].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
 
         transition_model.reset_state()
         s_hat_delta_mu, s_hat_delta_logvar = transition_model(state_batch, action_batch)
@@ -38,7 +38,6 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
         loss = F.gaussian_nll_loss(s_hat_mu, next_state_batch, s_hat_delta_var)
 
         losses.append(loss.item())
-
         optimizer.zero_grad()
         loss.backward()
         grad_norms.append(gradnorm(transition_model))
@@ -51,7 +50,7 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
 
 def train_policynetPB(policy_model: Module, transition_model: Module, memory: ReplayMemory,
                       optimizer: torch.optim.Optimizer, batch_size: int, loss_gain: array,
-                      warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20, beta: float = 0.0) -> dict:
+                      warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20, beta: float = 0.0, **kwargs) -> dict:
     """function used to update the parameters of a probabilistic policy network"""
 
     losses = []
@@ -117,14 +116,15 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
                 #              + alpha * torch.distributions.kl_divergence(action_dist, action_target_dist).mean()
 
                 action_loss = torch.mean(torch.pow(t - s_hat_mu, 2) * loss_gain)
-
-                action_target_dist = torch.distributions.normal.Normal(0., action_target_std)
-                action_reg = torch.distributions.kl_divergence(action_dist, action_target_dist).mean().to(next(policy_model.parameters()).device)
-                reg_loss = beta * action_reg
-
-                loss += action_loss + reg_loss
+                loss += action_loss
                 action_loss_ += action_loss
-                reg_loss_ += reg_loss
+
+                if beta:
+                    action_target_dist = torch.distributions.normal.Normal(0., action_target_std)
+                    action_reg = torch.distributions.kl_divergence(action_dist, action_target_dist).mean().to(next(policy_model.parameters()).device)
+                    reg_loss = beta * action_reg
+                    loss += reg_loss
+                    reg_loss_ += reg_loss
 
                 new_state_hat = s_hat_mu
 
@@ -155,7 +155,7 @@ def baseline_prediction(transitionnet: Module, episode: list) -> dict:
 
     states = torch.stack([step[0] for step in episode])
     actions = torch.stack([step[2] for step in episode])
-    next_states = torch.stack([step[3] for step in episode])
+    next_states = torch.stack([step[4] for step in episode])
 
     # predict next state based on action with transition net
     delta_states = rp(*transitionnet(states, actions))

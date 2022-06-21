@@ -122,7 +122,7 @@ def create_episode(env, transitionnet, policynet, steps: int = 100):
     return episode
 
 
-def make_predictions(episode: list, transitionnet: Module, h: int = 100) -> Tensor:\
+def make_predictions(episode: list, transitionnet: Module, h: int = 100, deterministic: bool = True) -> Tensor:\
 
     n = len(episode)
     observations = torch.stack([step[0] for step in episode]).unsqueeze(0).transpose(0, 1)
@@ -136,7 +136,10 @@ def make_predictions(episode: list, transitionnet: Module, h: int = 100) -> Tens
         transitionnet.update_state(hidden_state)
         mu_pred, logvar_pred = transitionnet(observations[i], actions[i])
         hidden_state = transitionnet.get_state()
-        delta_pred = rp(mu_pred, logvar_pred)
+        if deterministic:
+            delta_pred = mu_pred
+        else:
+            delta_pred = rp(mu_pred, logvar_pred)
         state_pred = current_observation + delta_pred
 
         predictions[i, 0] = state_pred
@@ -144,7 +147,10 @@ def make_predictions(episode: list, transitionnet: Module, h: int = 100) -> Tens
             if i+j >= n:
                 break
             mu_pred, logvar_pred = transitionnet(state_pred, actions[i+j])
-            delta_pred = rp(mu_pred, logvar_pred)
+            if deterministic:
+                delta_pred = mu_pred
+            else:
+                delta_pred = rp(mu_pred, logvar_pred)
             state_pred = state_pred + delta_pred
 
             predictions[i, j] = state_pred
@@ -153,10 +159,10 @@ def make_predictions(episode: list, transitionnet: Module, h: int = 100) -> Tens
 
 
 def animate_predictions(episode: list, transitionnet: Module, labels: list, h: int = 100, fps: float = 20.,
-                        save: Optional[Union[Path, str]] = './animation.mp4') -> object:
+                        save: Optional[Union[Path, str]] = './animation.mp4', deterministic: bool = True) -> object:
     plt.rcParams['font.size'] = '9'
 
-    predictions = make_predictions(episode, transitionnet, h)
+    predictions = make_predictions(episode, transitionnet, h, deterministic=deterministic)
     predictions = predictions.detach().cpu().numpy()
     next_observations = [step[4].squeeze().cpu().numpy() for step in episode]
 

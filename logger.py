@@ -41,13 +41,20 @@ class PandasLogger(object):
             print("saving results at", path)
             if path.exists():
                 print("updating existing results")
-                df = pd.read_csv(path)
+                attempts = 0
+                while attempts < 60:
+                    try:
+                        df = pd.read_csv(path)
+                        break
+                    except:
+                        attempts += 1
+                        time.sleep(1.0)
             else:
                 print("making new results frame")
                 df = pd.DataFrame([])
             df = pd.concat([df, self.result], ignore_index=True)
             attempts = 0
-            while attempts < 10:
+            while attempts < 60:
                 try:
                     df.to_csv(path, index=False)
                     self.result = pd.DataFrame([])

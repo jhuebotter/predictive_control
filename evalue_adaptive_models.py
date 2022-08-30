@@ -1,9 +1,9 @@
 from tqdm import tqdm
 import torch
-from utils import make_env, dict_mean
-from training_functions import baseline_prediction
-from plotting import animate_predictions, render_video, plot_trajectories
-from extratyping import *
+from src.utils import make_env, dict_mean
+from src.training_functions import baseline_prediction
+from src.plotting import animate_predictions, render_video, plot_trajectories
+from src.extratyping import *
 import wandb
 import numpy as np
 
@@ -19,6 +19,8 @@ def make_eval_tasks(task_config: dict) -> (list, list, object):
 
     states = []
     targets = []
+    env = None
+
     if task_config['type'] == 'plane':
         env = make_env(task_config)
         env.random_target = False
@@ -55,8 +57,24 @@ def make_eval_tasks(task_config: dict) -> (list, list, object):
             for i in range(len(targets)):
                 targets[i, 2:4] = rotate(r, 45 * i)
 
+    elif task_config['type'] == 'reacher2':
+        env = make_env(task_config)
+        env.random_target = False
+
+        states = np.zeros((8, 4))
+        targets = states.copy()
+
+        for i in range(len(targets)):
+            targets[i, :2] = 2 * np.pi * i / 8
+            if i % 2 == 1:
+                pass
+
+        if not task_config['params']['moving_target'] == 0.0:
+            for i in range(len(targets)):
+                targets[i, 2:4] = np.array([0.0, 0.5]) * env.max_vel
+
     else:
-        NotImplementedError('eval task for environment type not specified')
+        raise NotImplementedError('eval task for environment type not specified')
     # TODO: add more tasks here
 
     return states, targets, env

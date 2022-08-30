@@ -2,12 +2,12 @@ import torch
 import numpy as np
 from datetime import datetime
 from pathlib import Path
-from utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, dict_mean, \
-    reparameterize as rp, load_weights_from_disk
-from training_functions import train_policynetPB, train_transitionnetRNNPBNLL, baseline_prediction
-from plotting import render_video, animate_predictions
-from config import get_config, save_config
-from logger import PandasLogger
+from src.utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, dict_mean, \
+    load_weights_from_disk
+from src.training_functions import train_policynetPB, train_transitionnetRNNPBNLL, baseline_prediction
+from src.plotting import render_video, animate_predictions
+from src.config import get_config, save_config
+from src.logger import PandasLogger
 from tqdm import tqdm
 import argparse
 import wandb

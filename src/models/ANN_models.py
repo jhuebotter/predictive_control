@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from src.models.leakyRNN import LRNN
-from extratyping import *
-from utils import reparameterize as rp
+from src.extratyping import *
+from src.utils import reparameterize as rp
 
 class StatefulModel(Module):
     """Base class for models with a hidden stat """

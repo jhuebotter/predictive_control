@@ -3,9 +3,6 @@ from dm_control import mujoco
 from dm_control import suite
 import gym
 from gym import spaces
-import PIL
-import matplotlib
-import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
 class ReacherEnv(gym.Env):
@@ -21,6 +18,7 @@ class ReacherEnv(gym.Env):
         self.max_episode_steps = max_episode_steps
         self.observation_noise_std = np.array([0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001])
 
+        self.dt = 0.02
         self.rl_mode = rl_mode
 
         self.action_space = spaces.Box(
@@ -153,9 +151,6 @@ class ReacherEnv(gym.Env):
         x = self.env.physics.named.data.geom_xpos['finger', 'x']
         y = self.env.physics.named.data.geom_xpos['finger', 'y']
         return np.array([x, y])
-
-
-
 
 
 if __name__ == '__main__':

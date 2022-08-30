@@ -76,7 +76,7 @@ class PandasLogger(object):
 
 if __name__ == '__main__':
 
-    logger = PandasLogger(name='test2', dir='results')
+    logger = PandasLogger(name='test2', dir='../results')
 
     for i in range(1, 11):
         results = \

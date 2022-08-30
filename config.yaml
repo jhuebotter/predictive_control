@@ -5,7 +5,7 @@ evaluate: True
 
 # task parameters
 task:
-  type: plane
+  type: reacher2
   params:
     max_episode_steps: 200
     render: false
@@ -25,7 +25,7 @@ policy:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 10
+      n_batches: 3
       unroll_steps: 20
       warmup: 30
 transition:
@@ -41,17 +41,17 @@ transition:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 10
+      n_batches: 3
       beta: 0.0
 
 # training parameters
 memory_size: 1_024
-total_env_steps: 2_000_000
+total_env_steps: 1_000_000
 episodes_per_iteration: 10
 
 # plotting parameters
 animate: True
-record_every_n_iterations: 20
+record_every_n_iterations: 2
 record_first_n_episodes: 6
 
 # logging parameters

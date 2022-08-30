@@ -1,8 +1,9 @@
-pytorch
-matplotlib
+torch
+seaborn
+celluloid
 wandb
 omegaconf
 gym
 dm-control
 pygame
-ffmpeg # conda install -c conda-forge ffmpeg
+ffmpeg  # conda install -c conda-forge ffmpeg

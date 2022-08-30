@@ -1,9 +1,9 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from utils import ReplayMemory, reparameterize as rp, gradnorm
+from .utils import ReplayMemory, gradnorm
 from tqdm import tqdm
-from extratyping import *
+from .extratyping import *
 
 
 def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, optimizer: torch.optim.Optimizer,

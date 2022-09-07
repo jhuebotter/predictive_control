@@ -19,7 +19,8 @@ class Reacherv2Env(gym.Env):
         'render_fps': 50
     }
 
-    def __init__(self, seed: int = None, max_episode_steps: int = 200, rl_mode: bool = False, **kwargs):
+    def __init__(self, seed: int = None, max_episode_steps: int = 200, rl_mode: bool = False,
+                 moving_target: float = 0.0, **kwargs):
 
         self.dt = 0.02  # seconds between state updates
         self.max_episode_steps = max_episode_steps
@@ -34,7 +35,7 @@ class Reacherv2Env(gym.Env):
         self.min_vel = -self.max_vel
 
         self.random_target = True
-        self.moving_target = 0.0
+        self.moving_target = moving_target
         self.done_on_target = False
         self.epsilon = 0.05
 
@@ -192,7 +193,7 @@ class Reacherv2Env(gym.Env):
             if self.random_target:
                 self.target[:2] = self.np_random.uniform(low=0.0, high=2*np.pi, size=(2,))
                 if self.np_random.rand() < self.moving_target:
-                    self.target[2:] = self.np_random.uniform(low=0.5*self.min_vel, high=0.5*self.max_vel, size=(2,))
+                    self.target[2:] = self.np_random.uniform(low=0.3*self.min_vel, high=0.3*self.max_vel, size=(2,))
             else:
                 self.target[:2] = np.pi, np.pi
             #angle = self.np_random.uniform(low=0.0, high=2*np.pi)
@@ -347,10 +348,10 @@ class Reacherv2Env(gym.Env):
 
 if __name__ == '__main__':
     env = Reacherv2Env(seed=4)
-    target = np.array([0.75, 0.75, 0.0, 0.0])
+    target = np.array([0.75, 0.75, 0.2, 0.2])
     target[:2] *= 2 * np.pi
     target[2:] *= env.max_vel
-    o = env.reset(target=target)
+    o = env.reset() #target=target)
     #print(o)
     env.render(show_target_arm=True)
     for i in range(200):

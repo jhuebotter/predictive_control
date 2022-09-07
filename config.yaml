@@ -51,7 +51,7 @@ episodes_per_iteration: 10
 
 # plotting parameters
 animate: True
-record_every_n_iterations: 2
+record_every_n_iterations: 25
 record_first_n_episodes: 6
 
 # logging parameters

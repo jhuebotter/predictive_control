@@ -42,9 +42,7 @@ Please see below for example results for both environments with either static or
 
 #### Continuous control in a planar linear environment
 
-<img src="figures/plane_static.gif" width="200" height="200" /><img src="figures/plane_move.gif" width="200" height="200" /> 
-
-<br clear="left"/> 
+<img src="figures/plane_static.gif" width="200" height="200" /> <img src="figures/plane_move.gif" width="200" height="200" /> 
 
 #### Continuous control of a planar robot arm
 

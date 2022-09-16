@@ -3,11 +3,10 @@ This work is developed by Justus Huebotter in 2022 as part of the SPIKEFERENCE p
 Project (HBP) and the Donders Institute for Brain, Cognition and Behaviour. 
 
 In this project, we revisit policy optimization for low-level continuous control tasks and derive our methods from deep Active Inference (dAIF) 
-In particular, we use prediction errors to learn the dynamics of the system in a *transition model*.
-We show that we can then use this model to  drive the learning of an amortized *policy model* for goal reaching by imagining state trajectory rollouts, even when interaction with the real environment is limited.
+In particular, we use prediction errors to learn the dynamics of the system in a recurrent *transition model* (see figure left).
+We show that we can then use this model to  drive the learning of an amortized *policy model* (see figure right) for goal reaching by imagining state trajectory rollouts, even when interaction with the real environment is limited.
 
-<img src="figures/transition_model.png" width="300" />
-<img src="figures/policy_model.png" width="300" />
+<img src="figures/models.png" width="600" />
 
 The exact method used in this code base is explained in more detail in:
 

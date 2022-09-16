@@ -40,19 +40,15 @@ Please see below for example results for both environments with either static or
 
 ### Example Results
 
-#### Continuous control in a planar linear environment 
+#### Continuous control in a planar linear environment
 
-<img src="figures/plane_static.gif" width="200" height="200" />
-<img src="figures/plane_move.gif" width="200" height="200" />   
+<img src="figures/plane_static.gif" width="200" height="200" /><img src="figures/plane_move.gif" width="200" height="200" /> 
 
-<br>
+<br clear="left"/> 
 
 #### Continuous control of a planar robot arm
 
-<img src="figures/reacher_static.gif" width="200" height="200" />    
-<img src="figures/reacher_move.gif" width="200" height="200" />    
-
-<br>
+<img src="figures/reacher_static.gif" width="200" height="200" /> <img src="figures/reacher_move.gif" width="200" height="200" />
 
 The auto-regressive prediction model learns to accurately forecast the state trajectory based on control inputs:
 

@@ -1,6 +1,6 @@
 ### Predictive Control Project
-This work is developed by Justus Huebotter in 2022 as part of the SPIKEFERENCE project, co-founded by the Human Brain 
-Project (HBP) and the Donders Institute for Brain, Cognition and Behaviour. 
+This work is developed by Justus Huebotter in 2022 as part of the <a href="https://spikeference.eu/">SPIKEFERENCE project</a>, co-founded by the Human Brain 
+Project (HBP) Specific Grant Agreement 3 (ID: 945539) and the Donders Institute for Brain, Cognition and Behaviour. 
 
 In this project, we revisit policy optimization for low-level continuous control tasks and derive our methods from deep Active Inference (dAIF) 
 In particular, we use prediction errors to learn the dynamics of the system in a recurrent *transition model* (see figure left).

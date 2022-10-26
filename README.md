@@ -13,7 +13,7 @@ The exact method used in this code base is explained in more detail in:
 J. Huebotter, S. Thill, M. van Gerven, P. Lanillos (2022): **Learning Policies for Continuous Control via
 Transition Models**, *3rd International Workshop on Active Inference* 
 
-This publication is also available on arXiv (LINK HERE!!)
+This publication is also available [here](https://arxiv.org/abs/2209.08033).
 
 ### Using the code
 

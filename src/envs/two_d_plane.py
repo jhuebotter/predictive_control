@@ -320,3 +320,21 @@ class TwoDPlaneEnvSimple(TwoDPlaneEnv):
             vel = vel / mag_V
 
         return np.hstack([pos, vel])
+
+
+
+if __name__ == '__main__':
+
+    env = TwoDPlaneEnv(moving_target=0)
+    state, target = env.reset()
+    env.render()
+
+    for i in range(500):
+        a = env.action_space.sample()
+        state, target = env.step(a)[:2]
+        print()
+        print("action:", a)
+        print("state:", state)
+        print("target", target)
+
+        env.render()

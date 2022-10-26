@@ -10,8 +10,9 @@ action: [a_1, a_2] where a_i is proportional to \ddot{x}_i.
 """
 
 # setup some parameters
-N_steps = 1000      # number of steps with dt = 0.02 s
+N_steps = 1000      # total number of steps
 moving_target = 0.  # the probability of the target to be moving
+dt = 0.02           # dt = 0.02 s
 
 # Pablo's parameters
 pi_pos = 1.
@@ -26,8 +27,9 @@ initial_target = np.array([0., 0., 0., 0.])
 # initialize the environment
 env = TwoDPlaneEnv(
     moving_target=moving_target,
+    # force_mag=XX,
+    dt=dt
 )
-dt = env.dt  # dt = 0.02 s
 
 state, target = env.reset(initial_state, initial_target)
 # or uncomment for random state and target:
@@ -35,16 +37,21 @@ state, target = env.reset(initial_state, initial_target)
 
 env.render()
 
-# pick an initial action to do nothing
-a = np.array([0., 0.])
-
 # Pablo's math:
 x_dot = np.zeros_like(state)  # not sure what this is for?
 x_pos = state[:2]
 x_vel = state[2:]
 
+# pick an initial action to do nothing
+a = np.array([0., 0.])
+
 # simulate the system
 for i in range(N_steps):
+
+    # the legal action space is limited between -1 and 1
+    # in the env, 'a' is multiplied by a scalar which is 5.0 by default
+    # this can be changed by passing the 'force_mag' to the env init
+    a = np.clip(a, -1., 1.)
 
     # the gym.env class wants float32
     state, target = env.step(a.astype(np.float32))[:2]

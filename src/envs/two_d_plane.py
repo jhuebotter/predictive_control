@@ -19,13 +19,13 @@ class TwoDPlaneEnv(gym.Env):
     }
 
     def __init__(self, seed: int = None, max_episode_steps: int = 200, rl_mode: bool = False,
-                 moving_target: float = 0.0, angle: float = 0.0, **kwargs):
+                 moving_target: float = 0.0, angle: float = 0.0, force_mag: float = 5.0, dt: float = 0.02, **kwargs):
 
-        self.dt = 0.02  # seconds between state updates
+        self.dt = dt  # seconds between state updates
         self.max_episode_steps = max_episode_steps
         self.min_action = -1.0
         self.max_action = 1.0
-        self.force_mag = 5.0
+        self.force_mag = force_mag
         self.drag = 0.0
         self.angle = angle
 

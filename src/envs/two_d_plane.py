@@ -19,14 +19,15 @@ class TwoDPlaneEnv(gym.Env):
     }
 
     def __init__(self, seed: int = None, max_episode_steps: int = 200, rl_mode: bool = False,
-                 moving_target: float = 0.0, angle: float = 0.0, force_mag: float = 5.0, dt: float = 0.02, **kwargs):
+                 moving_target: float = 0.0, angle: float = 0.0, force_mag: float = 5.0, dt: float = 0.02,
+                 drag: float = 0.0, **kwargs):
 
         self.dt = dt  # seconds between state updates
         self.max_episode_steps = max_episode_steps
         self.min_action = -1.0
         self.max_action = 1.0
         self.force_mag = force_mag
-        self.drag = 0.0
+        self.drag = drag
         self.angle = angle
 
         self.rl_mode = rl_mode
@@ -110,7 +111,7 @@ class TwoDPlaneEnv(gym.Env):
 
         # get change in state since last update
         dpdt = vel
-        dvdt = action * self.force_mag # + self.gravity - self.drag * vel**2
+        dvdt = action * self.force_mag - self.drag * vel  # + self.gravity - self.drag * vel**2
         #vel = 0.5**self.dt * vel + dvdt * self.dt
 
         # update state
@@ -142,7 +143,7 @@ class TwoDPlaneEnv(gym.Env):
         # Cast action to float to strip np trappings
 
         self.state = np.array(self.stepPhysics(action))
-        self.state = np.random.normal(self.state, self.process_noise_std)
+        self.state = np.random.normal(self.state, self.process_noise_std * self.dt)
         self.stepTarget()
 
         # stop when position reaches edge of state space

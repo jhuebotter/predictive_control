@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from datetime import datetime
 from pathlib import Path
-from src.utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, dict_mean, \
-    load_weights_from_disk
+from src.utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, \
+    dict_mean, load_weights_from_disk
 from src.training_functions import train_policynetPB, train_transitionnetRNNPBNLL, baseline_prediction
 from src.plotting import render_video, animate_predictions
 from src.config import get_config, save_config

@@ -196,10 +196,10 @@ class TwoDPlaneEnv(gym.Env):
             self.target = np.zeros(4)
             if self.random_target:
                 self.target[:2] = self.np_random.uniform(low=0.8*self.min_pos, high=0.8*self.max_pos, size=(2,))
-                if self.np_random.rand() < self.moving_target:
+                if self.np_random.random() < self.moving_target:
                     self.target[2:] = self.np_random.uniform(low=-0.5, high=0.5, size=(2,))
                     self.target_angle = self.np_random.uniform(low=30, high=180)
-                    if self.np_random.rand() < 0.5:
+                    if self.np_random.random() < 0.5:
                         self.target_angle *= -1
         else:
             self.target = target

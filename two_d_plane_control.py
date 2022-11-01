@@ -11,21 +11,21 @@ action: [a_1, a_2] where a_i is proportional to \ddot{x}_i.
 
 # setup some parameters
 N_steps = 1000      # total number of steps
-moving_target = 1.  # the probability of the target to be moving
+moving_target = 0.  # the probability of the target to be moving
 dt = 0.02           # time step size
 drag = 1.           # friction parameter
-seed = 0            # random seed
+seed = 5            # random seed
 
 # AIF parameters
 # Precision parameters
 pi_x_0 = 1.
 pi_x_1 = 1.
-pi_s_0 = 1.
-pi_s_1 = 1.
+pi_s_0 = 10.
+pi_s_1 = 10.
 # Gains
-k_x = 0.5   # Perception gain
-k_a = 2.    # Action gain
-k_att = 1.  # Attractor (target)
+k_x = 1.   # Perception gain
+k_a = 5.    # Action gain
+k_att = np.array([1., 1.])  # Attractor (target)
 
 # to keep things simple, we can set the initial state and target (or comment out)
 initial_state = np.array([0.5, 0.5, 0., 0.])
@@ -34,7 +34,7 @@ initial_target = np.array([0., 0., 0., 0.])
 # initialize the environment
 env = TwoDPlaneEnv(
     moving_target=moving_target,
-    # force_mag=XX,
+    force_mag=1.,
     drag=drag,
     dt=dt,
     seed=seed
@@ -71,6 +71,10 @@ for i in range(N_steps):
 
     # Action
     a_dot = -k_a * ( pi_s_0 * (state_pos - x_0) + pi_s_1 * (state_vel - x_1) )
+
+    # bound the instantaneous acceleration
+    a_dot = np.clip(a_dot, -6., 6.)
+
     # Euler integration
     x_0 += dt * x_dot_0
     x_1 += dt * x_dot_1

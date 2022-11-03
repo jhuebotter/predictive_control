@@ -67,7 +67,7 @@ for i in range(N_steps):
     # Perception
     x_dot_0 = x_1 - k_x * ( -pi_s_0 * (state_pos - x_0) + pi_x_0 * (x_1 + k_att * (x_0 - target_pos) ) )
     x_dot_1 = x_2 - k_x * ( -pi_s_1 * (state_vel - x_1) + pi_x_0 * (x_1 + k_att * (x_0 - target_pos) ) + pi_x_1 * (x_2 + x_1) )
-    x_dot_2 = - k_x * ( pi_x_0 * (x_2 - x_1) )
+    x_dot_2 = - k_x * ( pi_x_1   * (x_2 - x_1) )
 
     # Action
     a_dot = -k_a * ( pi_s_0 * (state_pos - x_0) + pi_s_1 * (state_vel - x_1) )

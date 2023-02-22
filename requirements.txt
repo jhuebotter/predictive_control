@@ -4,6 +4,6 @@ celluloid
 wandb
 omegaconf
 gym
-dm-control
+# dm-control
 pygame
 ffmpeg  # conda install -c conda-forge ffmpeg

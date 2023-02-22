@@ -22,7 +22,8 @@ args, left_argv = parser.parse_known_args()
 
 # read some parameters from a config file
 if args.load_dir:
-    config = get_config(Path(args.load_dir, 'config.yaml'))
+    # config = get_config(Path(args.load_dir, 'config.yaml'))
+    config = get_config(Path(args.load_dir, 'config_snn.yaml'))
 else:
     config = get_config()
 
@@ -76,7 +77,8 @@ wandb.watch([transitionnet, policynet], log='all')
 logger = PandasLogger(name=wandb.run.id, dir=Path('results', config['experiment']))
 
 # save the run configuration in the result dir
-config_path = Path(run_dir, 'config.yaml')
+#config_path = Path(run_dir, 'config.yaml')
+config_path = Path(run_dir, 'config_snn.yaml')
 save_config(config, config_path)
 
 step = 1

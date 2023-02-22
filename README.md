@@ -23,7 +23,7 @@ To use the code please clone this git via:
 
 To install the required packages create a new local environment and run:
 
-`pip install requirements.txt`
+`pip install -r requirements.txt`
 
 To enable wandb logging you will have to sign up at https://wandb.ai and call
 

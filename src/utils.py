@@ -140,17 +140,21 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
     elif type_ == 'grupbadapt':
         from src.models.ANN_models import TransitionNetGRUPBAdaptive
         model = TransitionNetGRUPBAdaptive
+    elif type_ == 'rsnnpb':
+        from src.models.SNN_models import TransitionNetRSNNPB
+        model = TransitionNetRSNNPB
     else:
         raise NotImplementedError(f"the transition model {type_} is not implemented")
 
-    if params['act_func'] == 'relu':
-        params['act_func'] = F.relu
-    elif params['act_func'] == 'lrelu':
-        params['act_func'] = F.leaky_relu
-    elif params['act_func'] == 'sigmoid':
-        params['act_func'] = torch.sigmoid
-    else:
-        raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+    if 'act_func' in params.keys():
+        if params['act_func'] == 'relu':
+            params['act_func'] = F.relu
+        elif params['act_func'] == 'lrelu':
+            params['act_func'] = F.leaky_relu
+        elif params['act_func'] == 'sigmoid':
+            params['act_func'] = torch.sigmoid
+        else:
+            raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
 
     transitionnet = model(
         action_dim=action_dim,
@@ -191,17 +195,21 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     elif type_ == 'lrnnpb':
         from src.models.ANN_models import PolicyNetLRNNPB
         model = PolicyNetLRNNPB
+    elif type_ == 'ffsnnpb':
+        from src.models.SNN_models import PolicyNetFFSNNPB
+        model = PolicyNetFFSNNPB
     else:
         raise NotImplementedError(f"the policy model {type_} is not implemented")
 
-    if params['act_func'] == 'relu':
-        params['act_func'] = F.relu
-    elif params['act_func'] == 'lrelu':
-        params['act_func'] = F.leaky_relu
-    elif params['act_func'] == 'sigmoid':
-        params['act_func'] = torch.sigmoid
-    else:
-        raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+    if 'act_func' in params.keys():
+        if params['act_func'] == 'relu':
+            params['act_func'] = F.relu
+        elif params['act_func'] == 'lrelu':
+            params['act_func'] = F.leaky_relu
+        elif params['act_func'] == 'sigmoid':
+            params['act_func'] = torch.sigmoid
+        else:
+            raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
 
     policynet = model(
         action_dim=action_dim,

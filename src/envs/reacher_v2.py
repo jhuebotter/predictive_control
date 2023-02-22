@@ -192,7 +192,7 @@ class Reacherv2Env(gym.Env):
             self.target = np.zeros(4)
             if self.random_target:
                 self.target[:2] = self.np_random.uniform(low=0.0, high=2*np.pi, size=(2,))
-                if self.np_random.rand() < self.moving_target:
+                if self.np_random.uniform() < self.moving_target:
                     self.target[2:] = self.np_random.uniform(low=0.3*self.min_vel, high=0.3*self.max_vel, size=(2,))
             else:
                 self.target[:2] = np.pi, np.pi

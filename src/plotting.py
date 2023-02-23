@@ -130,12 +130,16 @@ def make_predictions(episode: list, transitionnet: Module, h: int = 100, determi
     d = observations.shape[-1]
     predictions = torch.zeros((n, h, d))
 
-    hidden_state = None
+    try:
+        transitionnet.state_initialized = False
+    except:
+        pass
+    #hidden_state = None
     for i in range(n):
         current_observation = observations[i]
-        transitionnet.update_state(hidden_state)
+        #transitionnet.update_state(hidden_state)
         mu_pred, logvar_pred = transitionnet(observations[i], actions[i])
-        hidden_state = transitionnet.get_state()
+        #hidden_state = transitionnet.get_state()
         if deterministic:
             delta_pred = mu_pred
         else:

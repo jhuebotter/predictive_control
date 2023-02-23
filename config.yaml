@@ -46,7 +46,7 @@ transition:
 
 # training parameters
 memory_size: 1_024
-total_env_steps: 1_000_000
+total_env_steps: 4_000
 episodes_per_iteration: 10
 
 # plotting parameters

@@ -25,7 +25,8 @@ if args.load_dir:
     # config = get_config(Path(args.load_dir, 'config.yaml'))
     config = get_config(Path(args.load_dir, 'config_snn.yaml'))
 else:
-    config = get_config()
+    #config = get_config()
+    config = get_config('config_snn.yaml')
 
 seed = config['seed']
 np.random.seed(seed)
@@ -122,15 +123,15 @@ while step <= config['total_env_steps']:
 
             # chose action and advance simulation
             action = policynet.predict(observation, target)
-            if len(action.shape) == 3:
-                action.squeeze_(0)
-            a = action[0].detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
+            #if len(action.shape) == 3:
+            #    action.squeeze_(0)
+            a = action[0, 0].detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
             next_observation, next_target, reward, done, info = env.step(a)
-            next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32).unsqueeze(0)
-            next_target = torch.tensor(next_target, device=device, dtype=torch.float32).unsqueeze(0)
+            next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32).unsqueeze_(0)
+            next_target = torch.tensor(next_target, device=device, dtype=torch.float32).unsqueeze_(0)
 
             # save transition for later
-            transition = (observation, target, action.detach(), reward, next_observation)
+            transition = (observation.clone(), target.clone(), action.detach().clone(), reward, next_observation.clone())
             episode.append(transition)
 
             if render_mode:

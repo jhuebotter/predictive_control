@@ -1,0 +1,57 @@
+# general parameters
+seed: 42
+experiment: debug_snn
+evaluate: True
+
+# task parameters
+task:
+  type: reacher2
+  params:
+    max_episode_steps: 200
+    render: false
+    moving_target: 1.0
+
+# model parameters
+policy:
+  model:
+    type: FFSNNPB
+    params:
+      hidden_dim: 256
+  optim:
+    type: adam
+    params:
+      lr: 0.0005
+  learning:
+    params:
+      batch_size: 1_024
+      n_batches: 3
+      unroll_steps: 20
+      warmup: 30
+transition:
+  model:
+    type: RSNNPB
+    params:
+      hidden_dim: 256
+  optim:
+    type: adam
+    params:
+      lr:  0.0005
+  learning:
+    params:
+      batch_size: 1_024
+      n_batches: 3
+      beta: 0.0
+
+# training parameters
+memory_size: 1_024
+total_env_steps: 1_000_000
+episodes_per_iteration: 10
+
+# plotting parameters
+animate: True
+record_every_n_iterations: 25
+record_first_n_episodes: 6
+
+# logging parameters
+project: ann-control
+entity: jhuebotter

@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from .utils import ReplayMemory, gradnorm
 from tqdm import tqdm
@@ -7,11 +8,14 @@ from .extratyping import *
 
 
 def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, optimizer: torch.optim.Optimizer,
-                           batch_size: int, warmup_steps: int = 20, n_batches: int = 1, **kwargs):
+                                batch_size: int, warmup_steps: int = 20, n_batches: int = 1,
+                                max_norm: Optional[float] = None, **kwargs):
+
     """function used to update the parameters of a probabilistic transition network"""
 
     losses = []
     grad_norms = []
+    clipped_grad_norms = []
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
 
@@ -41,16 +45,24 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
         optimizer.zero_grad()
         loss.backward()
         grad_norms.append(gradnorm(transition_model))
+        if max_norm is not None:
+            clip_grad_norm_(transition_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()
 
         pbar.set_postfix_str(f'loss: {loss.item()}')
 
-    return {'transition model loss': np.mean(losses), 'transition model grad norm': np.mean(grad_norms)}
+    return {
+        'transition model loss': np.mean(losses),
+        'transition model grad norm': np.mean(grad_norms),
+        'transition model clipped grad norm': np.mean(clipped_grad_norms),
+    }
 
 
 def train_policynetPB(policy_model: Module, transition_model: Module, memory: ReplayMemory,
                       optimizer: torch.optim.Optimizer, batch_size: int, loss_gain: array,
-                      warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20, beta: float = 0.0, **kwargs) -> dict:
+                      warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20, beta: float = 0.0,
+                      max_norm: Optional[float] = None, deterministic_transition: bool = True, **kwargs) -> dict:
     """function used to update the parameters of a probabilistic policy network"""
 
     losses = []
@@ -59,9 +71,12 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
     loss_gain = torch.tensor(loss_gain).to(next(policy_model.parameters()).device)
 
     grad_norms = []
+    clipped_grad_norms = []
 
     # TODO: this should be parameter somewhere
-    action_target_std = 0.01
+    if beta:
+        action_target_std = 0.1
+        action_target_dist = torch.distributions.normal.Normal(0., action_target_std)
 
     pbar = tqdm(range(n_batches), desc=f"{'updating policy network':30}")
     for i in pbar:
@@ -102,11 +117,10 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
                 #    a_logvar = torch.clamp(a_logvar, -10., 10.)
 
                 a_std = torch.exp(0.5 * a_logvar)
-                action_dist = torch.distributions.normal.Normal(a_mu, a_std)
-                a = action_dist.rsample()
+                a = a_mu + a_std * torch.randn_like(a_mu)
 
-                s_hat_delta_mu, s_hat_delta_logvar = transition_model(new_state_hat, a)
-                s_hat_mu = s_hat_delta_mu + new_state_hat
+                s_hat_delta = transition_model.predict(new_state_hat, a, deterministic=deterministic_transition)
+                s_hat = s_hat_delta + new_state_hat
 
                 # TODO: the code below is an alternative approach directly based on the KL-divergence and seems to work
                 #s_hat_delta_std = torch.exp(0.5 * s_hat_delta_logvar)
@@ -115,18 +129,18 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
                 #action_loss = torch.distributions.kl_divergence(next_state_dist, target_dist).mean() \
                 #              + alpha * torch.distributions.kl_divergence(action_dist, action_target_dist).mean()
 
-                action_loss = torch.mean(torch.pow(t - s_hat_mu, 2) * loss_gain)
+                action_loss = torch.mean(torch.pow(t - s_hat, 2) * loss_gain)
                 loss += action_loss
                 action_loss_ += action_loss
 
                 if beta:
-                    action_target_dist = torch.distributions.normal.Normal(0., action_target_std)
+                    action_dist = torch.distributions.normal.Normal(a_mu, a_std)
                     action_reg = torch.distributions.kl_divergence(action_dist, action_target_dist).mean().to(next(policy_model.parameters()).device)
                     reg_loss = beta * action_reg
                     loss += reg_loss
                     reg_loss_ += reg_loss
 
-                new_state_hat = s_hat_mu
+                new_state_hat = s_hat
 
         loss = loss / n_rollouts
         action_loss_ = action_loss_ / n_rollouts
@@ -136,6 +150,9 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
         reg_losses.append(reg_loss_.item())
         loss.backward()
         grad_norms.append(gradnorm(policy_model))
+        if max_norm is not None:
+            clip_grad_norm_(transition_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()
 
         pbar.set_postfix_str(f'loss: {loss.item()}')
@@ -144,7 +161,122 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
         'policy model loss': np.mean(losses),
         'policy model action loss': np.mean(action_losses),
         'policy model reg loss': np.mean(reg_losses),
-        'policy model grad norm': np.mean(grad_norms)
+        'policy model grad norm': np.mean(grad_norms),
+        'policy model clipped grad norm': np.mean(clipped_grad_norms),
+    }
+
+
+def train_policynetPB_sample(policy_model: Module, transition_model: Module, memory: ReplayMemory,
+                      optimizer: torch.optim.Optimizer, batch_size: int, loss_gain: array,
+                      warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20, beta: float = 0.0,
+                      max_norm: Optional[float] = None, deterministic_transition: bool = True, **kwargs) -> dict:
+    """function used to update the parameters of a probabilistic policy network"""
+
+    device = next(policy_model.parameters()).device
+
+    losses = []
+    action_losses = []
+    reg_losses = []
+    loss_gain = torch.tensor(loss_gain).to(device)
+
+    grad_norms = []
+    clipped_grad_norms = []
+
+    # TODO: this should be parameter somewhere
+    if beta:
+        action_target_std = 0.1
+        action_target_dist = torch.distributions.normal.Normal(0., action_target_std)
+
+    pbar = tqdm(range(n_batches), desc=f"{'updating policy network':30}")
+    for i in pbar:
+
+        optimizer.zero_grad()
+        loss = torch.zeros(1, device=device)
+        action_loss_ = torch.zeros(1, device=device)
+        reg_loss_ = torch.zeros(1, device=device)
+
+        # get a batch of episodes
+        episode_batch = []
+        while len(episode_batch) < batch_size:
+            sample_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, next_state)]
+            for episode in sample_batch:
+                episode_batch.append(episode)
+                if len(episode_batch) == batch_size: break
+
+        # make a random sample from each episode of length = warmup_steps
+        state_dim = episode_batch[0][0][0].size(-1)
+        target_dim = episode_batch[0][0][1].size(-1)
+        action_dim = episode_batch[0][0][2].size(-1)
+
+        state_batch = torch.zeros((warmup_steps, batch_size, state_dim), device=device)
+        target_batch = torch.zeros((warmup_steps, batch_size, target_dim), device=device)
+        action_batch = torch.zeros((warmup_steps, batch_size, action_dim), device=device)
+
+        for j in range(batch_size):
+            r = torch.randint(low=0, high=len(episode_batch[j]) - warmup_steps, size=(1,))
+            state_batch[:, j, :] = torch.stack([step[0].squeeze() for step in episode_batch[j][r:r+warmup_steps]])
+            target_batch[:, j, :] = torch.stack([step[1].squeeze() for step in episode_batch[j][r:r+warmup_steps]])
+            action_batch[:, j, :] = torch.stack([step[2].squeeze() for step in episode_batch[j][r:r+warmup_steps]])
+
+        # reset the models
+        policy_model.reset_state()
+        transition_model.reset_state()
+
+        # warm up both models
+        _ = policy_model(state_batch[:-1], target_batch[:-1])
+        _ = transition_model(state_batch[:-1], action_batch[:-1])
+
+        new_state_hat = state_batch[-1]
+        t = target_batch[-1]
+
+        for k in range(unroll_steps):
+
+            # sample an action from policy network
+            a_mu, a_logvar = policy_model(new_state_hat, t)
+            a_std = torch.exp(0.5 * a_logvar)
+            a = a_mu + a_std * torch.randn_like(a_mu)
+
+            s_hat_delta = transition_model.predict(new_state_hat, a, deterministic=deterministic_transition)
+            s_hat = s_hat_delta + new_state_hat
+
+            # TODO: the code below is an alternative approach directly based on the KL-divergence and seems to work
+            #s_hat_delta_std = torch.exp(0.5 * s_hat_delta_logvar)
+            #s_hat_dist = torch.distributions.normal.Normal(s_hat_mu, s_hat_delta_std)
+            #target_loss = torch.mean(torch.distributions.kl_divergence(s_hat_dist, target_dist) * loss_gain)
+            #action_loss = torch.distributions.kl_divergence(next_state_dist, target_dist).mean() \
+            #              + alpha * torch.distributions.kl_divergence(action_dist, action_target_dist).mean()
+
+            action_loss = torch.mean(torch.pow(t - s_hat, 2) * loss_gain)
+            loss += action_loss
+            action_loss_ += action_loss
+
+            if beta:
+                action_dist = torch.distributions.normal.Normal(a_mu, a_std)
+                action_reg = torch.distributions.kl_divergence(action_dist, action_target_dist).mean().to(device)
+                reg_loss = beta * action_reg
+                loss += reg_loss
+                reg_loss_ += reg_loss
+
+            new_state_hat = s_hat
+
+        losses.append(loss.item())
+        action_losses.append(action_loss_.item())
+        reg_losses.append(reg_loss_.item())
+        loss.backward()
+        grad_norms.append(gradnorm(policy_model))
+        if max_norm is not None:
+            clip_grad_norm_(transition_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(transition_model))
+        optimizer.step()
+
+        pbar.set_postfix_str(f'loss: {loss.item()}')
+
+    return {
+        'policy model loss': np.mean(losses),
+        'policy model action loss': np.mean(action_losses),
+        'policy model reg loss': np.mean(reg_losses),
+        'policy model grad norm': np.mean(grad_norms),
+        'policy model clipped grad norm': np.mean(clipped_grad_norms),
     }
 
 

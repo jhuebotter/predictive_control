@@ -13,14 +13,14 @@ BLACK = (0, 0, 0)
 
 
 class TwoDPlaneEnv(gym.Env):
-    metadata = {
-        'render_modes': ['human', 'rgb_array'],
-        'render_fps': 50
-    }
-
     def __init__(self, seed: int = None, max_episode_steps: int = 200, rl_mode: bool = False,
                  moving_target: float = 0.0, angle: float = 0.0, force_mag: float = 5.0, dt: float = 0.02,
                  drag: float = 0.0, **kwargs):
+
+        self.metadata = {
+            'render_modes': ['human', 'rgb_array'],
+            'render_fps': int(1./dt)
+        }
 
         self.dt = dt  # seconds between state updates
         self.max_episode_steps = max_episode_steps

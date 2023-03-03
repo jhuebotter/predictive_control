@@ -161,8 +161,7 @@ if __name__ == '__main__':
         env.render()
         while True:
             a = np.array([-1., -0.])
-            obs, tar, done, _ = env.step(a)
+            obs, tar, done, *_ = env.step(a)
             #print(obs[:2], tar, done)
             env.render()
-            if done:
-                break
+

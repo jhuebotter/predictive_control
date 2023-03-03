@@ -305,17 +305,17 @@ class Readout(Module):
 
 class TransitionNetRSNNPB(Module):
     def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_layers: int = 1,
-                 bias: bool = True, repeat_input: int = 1, out_style: str = 'mean', device=None,
-                 dtype=None, flif_kwargs: dict = {}) -> None:
+                 bias: bool = True, repeat_input: int = 1, out_style: str = 'mean', dt: float = 1e-3, device=None,
+                 dtype=None, flif_kwargs: dict = {}, readout_kwargs: dict = {}) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(TransitionNetRSNNPB, self).__init__()
 
         layers = OrderedDict()
-        layers['lif1'] = FLIF_B(state_dim + action_dim, hidden_dim, bias=bias, **factory_kwargs, **flif_kwargs)
+        layers['lif1'] = FLIF_B(state_dim + action_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
         for i in range(num_layers - 1):
-            layers[f'lif{2+i}'] = FLIF_B(hidden_dim, hidden_dim, bias=bias, **factory_kwargs, **flif_kwargs)
-        layers['mu'] = Readout(hidden_dim, state_dim, **factory_kwargs)
-        layers['logvar'] = Readout(hidden_dim, state_dim, **factory_kwargs)
+            layers[f'lif{2+i}'] = FLIF_B(hidden_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
+        layers['mu'] = Readout(hidden_dim, state_dim, dt=dt, **factory_kwargs, **readout_kwargs)
+        layers['logvar'] = Readout(hidden_dim, state_dim, dt=dt, **factory_kwargs, **readout_kwargs)
 
         self.basis = nn.ModuleDict(layers)
 
@@ -373,7 +373,7 @@ class TransitionNetRSNNPB(Module):
 
     def predict(self, state: Tensor, action: Tensor, deterministic: bool = False):
 
-        mu, logvar = self.forward(state, action)
+        mu, logvar = self(state, action)
 
         if deterministic:
             return mu
@@ -383,17 +383,17 @@ class TransitionNetRSNNPB(Module):
 
 class PolicyNetFFSNNPB(Module):
     def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_layers: int = 1,
-                 bias: bool = True, repeat_input: int = 1, out_style: str = 'mean', device=None,
-                 dtype=None, flif_kwargs: dict = {'recurrent': False}) -> None:
+                 bias: bool = True, repeat_input: int = 1, out_style: str = 'mean', dt: float = 1e-3, device=None,
+                 dtype=None, flif_kwargs: dict = {'recurrent': False}, readout_kwargs: dict = {}) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(PolicyNetFFSNNPB, self).__init__()
 
         layers = OrderedDict()
-        layers['lif1'] = FLIF_B(state_dim + target_dim, hidden_dim, bias=bias, **factory_kwargs, **flif_kwargs)
+        layers['lif1'] = FLIF_B(state_dim + target_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
         for i in range(num_layers - 1):
-            layers[f'lif{2+i}'] = FLIF_B(hidden_dim, hidden_dim, bias=bias, **factory_kwargs, **flif_kwargs)
-        layers['mu'] = Readout(hidden_dim, action_dim, **factory_kwargs)
-        layers['logvar'] = Readout(hidden_dim, action_dim, **factory_kwargs)
+            layers[f'lif{2+i}'] = FLIF_B(hidden_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
+        layers['mu'] = Readout(hidden_dim, action_dim, dt=dt, **factory_kwargs, **readout_kwargs)
+        layers['logvar'] = Readout(hidden_dim, action_dim, dt=dt, **factory_kwargs, **readout_kwargs)
 
         self.basis = nn.ModuleDict(layers)
 
@@ -451,7 +451,7 @@ class PolicyNetFFSNNPB(Module):
 
     def predict(self, state: Tensor, target: Tensor, deterministic: bool = False) -> Tensor:
 
-        mu, logvar = self.forward(state, target)
+        mu, logvar = self(state, target)
 
         if deterministic:
             return mu

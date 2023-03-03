@@ -369,14 +369,14 @@ class AdaptiveModel(StatefulModel):
     def __init__(self):
         super().__init__()
 
-    def reset_adaptation_weights(self):
+    def reset_adaptation_weights(self) -> None:
 
         for k, l in self.adaptive_layers.items():
             l.weight.data.fill_(0.)
-            if self.bias:
+            if l.bias is not None:
                 l.bias.data.fill_(0.)
 
-    def get_adaptation_weights(self):
+    def get_adaptation_weights(self) -> dict:
 
         return self.adaptive_layers.state_dict()
 
@@ -422,9 +422,9 @@ class PolicyNetPBAdaptive(AdaptiveModel):
 
         return torch.tanh(mu), logvar
 
-    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False):
+    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False) -> Tensor:
 
-        mu, logvar = self.forward(state, target)
+        mu, logvar = self(state, target)
 
         if deterministic:
             return mu
@@ -472,9 +472,9 @@ class TransitionNetGRUPBAdaptive(AdaptiveModel):
 
         return mu, logvar
 
-    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False):
+    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False) -> Tensor:
 
-        mu, logvar = self.forward(state, target)
+        mu, logvar = self(state, target)
 
         if deterministic:
             return mu

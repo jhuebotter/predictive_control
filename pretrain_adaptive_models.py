@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from src.utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, \
     dict_mean, load_weights_from_disk
-from src.training_functions import train_policynetPB, train_transitionnetRNNPBNLL, baseline_prediction
+from src.training_functions import train_policynetPB, train_policynetPB_sample, train_transitionnetRNNPBNLL, baseline_prediction
 from src.plotting import render_video, animate_predictions
 from src.config import get_config, save_config
 from src.logger import PandasLogger
@@ -167,7 +167,7 @@ while step <= config['total_env_steps']:
     transition_results = train_transitionnetRNNPBNLL(transitionnet, memory, opt_trans, **config['transition']['learning']['params'])
     transitionnet_updates += config['transition']['learning']['params']['n_batches']
 
-    policy_results = train_policynetPB(policynet, transitionnet, memory, opt_policy,
+    policy_results = train_policynetPB_sample(policynet, transitionnet, memory, opt_policy,
                                        loss_gain=env.loss_gain, **config['policy']['learning']['params'])
     policynet_updates += config['policy']['learning']['params']['n_batches']
 

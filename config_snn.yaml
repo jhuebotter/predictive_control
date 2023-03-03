@@ -5,19 +5,20 @@ evaluate: True
 
 # task parameters
 task:
-  type: reacher2
+  type: plane
   params:
     max_episode_steps: 200
     render: false
     moving_target: 0.0
 
-# model parameters
+# policy model parameters
 policy:
   model:
     type: FFSNNPB
     params:
       hidden_dim: 256
       repeat_input: 5
+      dt: 0.004
   optim:
     type: adam
     params:
@@ -25,15 +26,20 @@ policy:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 30
-      unroll_steps: 20
-      warmup: 30
+      n_batches: 3
+      warmup_steps: 8
+      unroll_steps: 5
+      max_norm: 1.0
+      deterministic_transition: True
+
+# transition model parameters
 transition:
   model:
     type: RSNNPB
     params:
       hidden_dim: 256
       repeat_input: 5
+      dt: 0.004
   optim:
     type: adam
     params:
@@ -41,16 +47,18 @@ transition:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 30
+      n_batches: 1
+      warmup_steps: 8
+      max_norm: 1.0
       beta: 0.0
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 1_000_000
+total_env_steps: 4_000
 episodes_per_iteration: 10
 
 # plotting parameters
-animate: True
+animate: False
 record_every_n_iterations: 25
 record_first_n_episodes: 5
 

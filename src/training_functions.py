@@ -58,6 +58,58 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
         'transition model clipped grad norm': np.mean(clipped_grad_norms),
     }
 
+def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayMemory, optimizer: torch.optim.Optimizer,
+                                batch_size: int, warmup_steps: int = 20, n_batches: int = 1,
+                                max_norm: Optional[float] = None, **kwargs):
+
+    """function used to update the parameters of a probabilistic transition network"""
+
+    losses = []
+    grad_norms = []
+    clipped_grad_norms = []
+    pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
+    for i in pbar:
+
+        maxlen = -1
+        while maxlen <= warmup_steps:
+            # TODO: find better solution for this!
+            episode_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, reward, next_state)]
+            maxlen = min([len(e) for e in episode_batch])
+
+        state_batch = torch.stack([torch.stack([step[0].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
+        action_batch = torch.stack([torch.stack([step[2].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
+        next_state_batch = torch.stack([torch.stack([step[4].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
+
+        transition_model.reset_state()
+        s_hat_delta_mu, s_hat_delta_logvar = transition_model(state_batch, action_batch)
+
+        # TODO: the code below does not work but need to find a way to avoid extreme logvar values
+        #with torch.no_grad():
+        #    s_hat_delta_logvar = torch.clamp(s_hat_delta_logvar, -10., 10.)
+
+        s_hat_mu = s_hat_delta_mu + state_batch
+        s_hat_delta_var = torch.exp(s_hat_delta_logvar)
+
+        loss = F.gaussian_nll_loss(s_hat_mu, next_state_batch, s_hat_delta_var)
+
+        losses.append(loss.item())
+        optimizer.zero_grad()
+        loss.backward()
+        grad_norms.append(gradnorm(transition_model))
+        if max_norm is not None:
+            clip_grad_norm_(transition_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(transition_model))
+        optimizer.step()
+
+        pbar.set_postfix_str(f'loss: {loss.item()}')
+
+    return {
+        'transition model loss': np.mean(losses),
+        'transition model grad norm': np.mean(grad_norms),
+        'transition model clipped grad norm': np.mean(clipped_grad_norms),
+    }
+
+
 
 def train_policynetPB(policy_model: Module, transition_model: Module, memory: ReplayMemory,
                       optimizer: torch.optim.Optimizer, batch_size: int, loss_gain: array,

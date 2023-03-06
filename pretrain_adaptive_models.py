@@ -18,15 +18,16 @@ torch.autograd.set_detect_anomaly(True)
 # read the directory to be loaded
 parser = argparse.ArgumentParser()
 parser.add_argument('--load_dir', help='directory with config file and model parameters', type=str, default='')
+parser.add_argument('--config', help='name of the config file', type=str, default='config.yaml')
 args, left_argv = parser.parse_known_args()
 
 # read some parameters from a config file
 if args.load_dir:
     # config = get_config(Path(args.load_dir, 'config.yaml'))
-    config = get_config(Path(args.load_dir, 'config_snn.yaml'))
+    config = get_config(Path(args.load_dir, args.config))
 else:
     #config = get_config()
-    config = get_config('config_snn.yaml')
+    config = get_config(args.config)
 
 seed = config['seed']
 np.random.seed(seed)
@@ -164,12 +165,20 @@ while step <= config['total_env_steps']:
                   step=iteration)
 
     # update transition and policy models based on data in memory
-    transition_results = train_transitionnetRNNPBNLL(transitionnet, memory, opt_trans, **config['transition']['learning']['params'])
-    transitionnet_updates += config['transition']['learning']['params']['n_batches']
+    transition_learning_params = dict(**config['general']['learning']['params'])
+    if config['transition']['learning']['params'] is not None:
+        print(config['transition']['learning']['params'])
+        transition_learning_params.update(config['transition']['learning']['params'])
 
+    transition_results = train_transitionnetRNNPBNLL(transitionnet, memory, opt_trans, **transition_learning_params)
+    transitionnet_updates += transition_learning_params['n_batches']
+
+    policy_learning_params = dict(**config['general']['learning']['params'])
+    if config['policy']['learning']['params'] is not None:
+        policy_learning_params.update(config['policy']['learning']['params'])
     policy_results = train_policynetPB_sample(policynet, transitionnet, memory, opt_policy,
-                                       loss_gain=env.loss_gain, **config['policy']['learning']['params'])
-    policynet_updates += config['policy']['learning']['params']['n_batches']
+                                       loss_gain=env.loss_gain, **policy_learning_params)
+    policynet_updates += policy_learning_params['n_batches']
 
     # log the iteration results
     data = {'environment step': step, 'episode': episode_count, 'iteration': iteration,

@@ -11,6 +11,15 @@ task:
     render: false
     moving_target: 0.0
 
+# general parameters
+general:
+  learning:
+    params:
+      batch_size: 1_024
+      n_batches: 30
+      warmup_steps: 8
+      max_norm: 1.0
+
 # policy model parameters
 policy:
   model:
@@ -24,12 +33,9 @@ policy:
       lr: 0.0005
   learning:
     params:
-      batch_size: 1_024
-      n_batches: 30
-      warmup_steps: 8
       unroll_steps: 5
-      max_norm: 1.0
       deterministic_transition: True
+      beta: 0.0
 
 # transition model parameters
 transition:
@@ -43,20 +49,15 @@ transition:
     params:
       lr:  0.0005
   learning:
-    params:
-      batch_size: 1_024
-      n_batches: 30
-      warmup_steps: 8
-      max_norm: 1.0
-      beta: 0.0
+    params: null
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 1_000_000
+total_env_steps: 4_000
 episodes_per_iteration: 10
 
 # plotting parameters
-animate: True
+animate: False
 record_every_n_iterations: 25
 record_first_n_episodes: 5
 

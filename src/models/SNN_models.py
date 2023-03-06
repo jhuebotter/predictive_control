@@ -187,8 +187,8 @@ class FLIF_B(Module):
             self.init_state(inpt.shape[0])
 
         # calculate decay variables
-        alpha = torch.exp(-self.dt/self.I_tau)
-        beta  = torch.exp(-self.dt/self.V_tau)
+        alpha = torch.clamp(torch.exp(-self.dt/self.I_tau), 0., 1.)
+        beta  = torch.clamp(torch.exp(-self.dt/self.V_tau), 0., 1.)
 
         # integrate new input
         I_in = F.dropout(self.input_con(inpt), self.input_dropout, True, False)

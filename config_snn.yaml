@@ -31,6 +31,8 @@ policy:
       unroll_steps: 5
       max_norm: 1.0
       deterministic_transition: True
+      flif_kwargs:
+        recurrent: False
 
 # transition model parameters
 transition:

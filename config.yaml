@@ -1,7 +1,6 @@
 # general parameters
 seed: 42
 experiment: debug
-evaluate: True
 
 # task parameters
 task:
@@ -13,27 +12,28 @@ task:
 
 # general parameters
 general:
-  learning:
-    params:
-      batch_size: 1_024
-      n_batches: 30
-      warmup_steps: 8
-      max_norm: 1.0
-
-# policy model parameters
-policy:
   model:
-    type: MLPPBadapt
     params:
-      act_func: lrelu
       hidden_dim: 256
+      act_func: lrelu
   optim:
     type: adam
     params:
       lr: 0.0005
   learning:
     params:
-      unroll_steps: 5
+      batch_size: 1_024
+      n_batches: 30
+      unroll_steps: 8
+      warmup_steps: 8
+      max_norm: 10.0
+
+# policy model parameters
+policy:
+  model:
+    type: MLPPBadapt
+  learning:
+    params:
       deterministic_transition: True
       beta: 0.0
 
@@ -41,20 +41,13 @@ policy:
 transition:
   model:
     type: GRUPBadapt
-    params:
-      act_func: lrelu
-      hidden_dim: 256
-  optim:
-    type: adam
-    params:
-      lr:  0.0005
-  learning:
-    params: null
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 4_000
+total_env_steps: 2_000
 episodes_per_iteration: 10
+evaluate: True
+evaluate_every_n_iterations: 25
 
 # plotting parameters
 animate: False

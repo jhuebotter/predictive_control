@@ -98,8 +98,8 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
 
         # reset the environment
         observation, target = env.reset(state=states[e-1], target=targets[e-1])
-        observation = torch.tensor(observation, device=device, dtype=torch.float32).unsqueeze(0)
-        target = torch.tensor(target, device=device, dtype=torch.float32).unsqueeze(0)
+        observation = torch.tensor(observation, device=device, dtype=torch.float32)
+        target = torch.tensor(target, device=device, dtype=torch.float32)
 
         # reset the network states
         policynet.reset_state()
@@ -111,13 +111,11 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
         while not done:
 
             # chose action and advance simulation
-            action = policynet.predict(observation, target, deterministic=True)
-            #if len(action.shape) == 3:
-            #    action.squeeze_(0)
-            a = action[0, 0].detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
+            action = policynet.predict(observation.view((1, 1, -1)), target.view((1, 1, -1)), deterministic=True)
+            a = action.flatten().detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
             next_observation, next_target, reward, done, info = env.step(a)
-            next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32).unsqueeze_(0)
-            next_target = torch.tensor(next_target, device=device, dtype=torch.float32).unsqueeze_(0)
+            next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32)
+            next_target = torch.tensor(next_target, device=device, dtype=torch.float32)
 
             # save transition for later
             transition = (observation.clone(), target.clone(), action.detach().clone(), reward, next_observation.clone())

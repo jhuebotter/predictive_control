@@ -3,8 +3,9 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 from src.utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, \
-    dict_mean, load_weights_from_disk
-from src.training_functions import train_policynetPB, train_policynetPB_sample, train_transitionnetRNNPBNLL, baseline_prediction
+    dict_mean, load_weights_from_disk, update_dict
+from src.training_functions import train_policynetPB, train_policynetPB_sample, train_transitionnetRNNPBNLL, \
+    train_transitionnetRNNPBNLL_sample, baseline_prediction
 from src.plotting import render_video, animate_predictions
 from src.config import get_config, save_config
 from src.logger import PandasLogger
@@ -47,12 +48,20 @@ loss_gain = env.loss_gain
 memory = ReplayMemory(config['memory_size'])
 
 # initialize the models
-transitionnet = make_transition_model(env, config['transition']['model']).to(device)
-policynet = make_policy_model(env, config['policy']['model']).to(device)
+transition_model_config = dict(**config['general'].get('model', {}))
+transition_model_config = update_dict(transition_model_config, config['transition'].get('model', {}))
+policy_model_config = dict(**config['general'].get('model', {}))
+policy_model_config = update_dict(policy_model_config, config['policy'].get('model', {}))
+transitionnet = make_transition_model(env, transition_model_config).to(device)
+policynet = make_policy_model(env, policy_model_config).to(device)
 
 # initialize the optimizers
-opt_trans = make_optimizer(transitionnet.basis, config['transition']['optim'])
-opt_policy = make_optimizer(policynet.basis, config['policy']['optim'])
+transition_opt_config = dict(**config['general'].get('optim', {}))
+transition_opt_config = update_dict(transition_opt_config, config['transition'].get('optim', {}))
+policy_opt_config = dict(**config['general'].get('optim', {}))
+policy_opt_config = update_dict(policy_opt_config, config['transition'].get('optim', {}))
+opt_trans = make_optimizer(transitionnet.basis, transition_opt_config)
+opt_policy = make_optimizer(policynet.basis, policy_opt_config)
 
 # load model and other things from checkpoint
 if args.load_dir:
@@ -79,8 +88,7 @@ wandb.watch([transitionnet, policynet], log='all')
 logger = PandasLogger(name=wandb.run.id, dir=Path('results', config['experiment']))
 
 # save the run configuration in the result dir
-#config_path = Path(run_dir, 'config.yaml')
-config_path = Path(run_dir, 'config_snn.yaml')
+config_path = Path(run_dir, 'config.yaml')
 save_config(config, config_path)
 
 step = 1
@@ -110,8 +118,8 @@ while step <= config['total_env_steps']:
 
         # reset the environment
         observation, target = env.reset()
-        observation = torch.tensor(observation, device=device, dtype=torch.float32).unsqueeze(0)
-        target = torch.tensor(target, device=device, dtype=torch.float32).unsqueeze(0)
+        observation = torch.tensor(observation, device=device, dtype=torch.float32)
+        target = torch.tensor(target, device=device, dtype=torch.float32)
 
         # reset the network states
         policynet.reset_state()
@@ -123,13 +131,11 @@ while step <= config['total_env_steps']:
         while not done:
 
             # chose action and advance simulation
-            action = policynet.predict(observation, target)
-            #if len(action.shape) == 3:
-            #    action.squeeze_(0)
-            a = action[0, 0].detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
+            action = policynet.predict(observation.view(1, 1, -1), target.view(1, 1, -1)).flatten()
+            a = action.detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
             next_observation, next_target, reward, done, info = env.step(a)
-            next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32).unsqueeze_(0)
-            next_target = torch.tensor(next_target, device=device, dtype=torch.float32).unsqueeze_(0)
+            next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32)
+            next_target = torch.tensor(next_target, device=device, dtype=torch.float32)
 
             # save transition for later
             transition = (observation.clone(), target.clone(), action.detach().clone(), reward, next_observation.clone())
@@ -165,20 +171,16 @@ while step <= config['total_env_steps']:
                   step=iteration)
 
     # update transition and policy models based on data in memory
-    transition_learning_params = dict(**config['general']['learning']['params'])
-    if config['transition']['learning']['params'] is not None:
-        print(config['transition']['learning']['params'])
-        transition_learning_params.update(config['transition']['learning']['params'])
+    transition_learning_config = dict(**config['general'].get('learning', {}))
+    transition_learning_config = update_dict(transition_learning_config, config['transition'].get('learning', {}))
+    transition_results = train_transitionnetRNNPBNLL_sample(transitionnet, memory, opt_trans, **transition_learning_config['params'])
+    transitionnet_updates += transition_learning_config['params']['n_batches']
 
-    transition_results = train_transitionnetRNNPBNLL(transitionnet, memory, opt_trans, **transition_learning_params)
-    transitionnet_updates += transition_learning_params['n_batches']
-
-    policy_learning_params = dict(**config['general']['learning']['params'])
-    if config['policy']['learning']['params'] is not None:
-        policy_learning_params.update(config['policy']['learning']['params'])
+    policy_learning_config = dict(**config['general'].get('learning', {}))
+    policy_learning_config = update_dict(policy_learning_config, config['policy'].get('learning', {}))
     policy_results = train_policynetPB_sample(policynet, transitionnet, memory, opt_policy,
-                                       loss_gain=env.loss_gain, **policy_learning_params)
-    policynet_updates += policy_learning_params['n_batches']
+                                       loss_gain=env.loss_gain, **policy_learning_config['params'])
+    policynet_updates += policy_learning_config['params']['n_batches']
 
     # log the iteration results
     data = {'environment step': step, 'episode': episode_count, 'iteration': iteration,
@@ -186,7 +188,7 @@ while step <= config['total_env_steps']:
     iteration_results = dict(**transition_results, **policy_results, **baseline_results, **data, **rewards)
 
     # evaluate if necessary
-    if config['evaluate']:
+    if config['evaluate'] and (iteration % config['evaluate_every_n_iterations'] == 0 or iteration == 1):
         record = False
         if (iteration % config['record_every_n_iterations'] == 0 or iteration == 1) and config['animate']:
             record = True

@@ -1,7 +1,6 @@
 # general parameters
 seed: 42
 experiment: debug_snn
-evaluate: True
 
 # task parameters
 task:
@@ -11,14 +10,20 @@ task:
     render: false
     moving_target: 0.0
 
-# policy model parameters
-policy:
+# general parameters
+general:
   model:
-    type: FFSNNPB
     params:
       hidden_dim: 256
       repeat_input: 5
+      out_style: last
       dt: 0.004
+      flif_kwargs:
+        train_V_tau: False
+        train_I_tau: False
+      readout_kwargs:
+        train_V_tau: False
+        train_I_tau: False
   optim:
     type: adam
     params:
@@ -26,38 +31,34 @@ policy:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 3
+      n_batches: 30
+      unroll_steps: 8
       warmup_steps: 8
-      unroll_steps: 5
-      max_norm: 1.0
-      deterministic_transition: True
+      max_norm: 10.0
+
+# policy model parameters
+policy:
+  model:
+    type: FFSNNPB
+    params:
       flif_kwargs:
         recurrent: False
+  learning:
+    params:
+      beta: 0.0
+      deterministic_transition: True
 
 # transition model parameters
 transition:
   model:
     type: RSNNPB
-    params:
-      hidden_dim: 256
-      repeat_input: 5
-      dt: 0.004
-  optim:
-    type: adam
-    params:
-      lr:  0.0005
-  learning:
-    params:
-      batch_size: 1_024
-      n_batches: 1
-      warmup_steps: 8
-      max_norm: 1.0
-      beta: 0.0
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 4_000
+total_env_steps: 2_000
 episodes_per_iteration: 10
+evaluate: True
+evaluate_every_n_iterations: 25
 
 # plotting parameters
 animate: False

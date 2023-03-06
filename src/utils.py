@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from .extratyping import *
+import collections
 
 
 def save_checkpoint(model: Module, optimizer: Optimizer = None, path: str = "model_checkpoint.cpt", **kwargs) -> None:
@@ -274,13 +275,25 @@ def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimize
 
 def dict_mean(dict_list: list[dict]) -> dict:
     """for a list of dicts with the same keys and numeric values return a dict with the same keys and averaged values"""
-    
+
     mean_dict = {}
     if len(dict_list) > 0:
         for key in dict_list[0].keys():
             mean_dict[key] = np.mean([d[key] for d in dict_list], axis=0)
 
     return mean_dict
+
+
+def update_dict(d: dict, u: Optional[collections.abc.Mapping] = None) -> dict:
+    """update a (nested) dictionary with the values of another (nested) dictionary."""
+
+    if u is not None:
+        for k, v in u.items():
+            if isinstance(v, collections.abc.Mapping):
+                d[k] = update_dict(d.get(k, {}), v)
+            else:
+                d[k] = v
+    return d
 
 
 def gradnorm(model: torch.nn.Module) -> float:

@@ -187,8 +187,8 @@ class FLIF_B(Module):
             self.init_state(inpt.shape[0])
 
         # calculate decay variables
-        alpha = torch.clamp(torch.exp(-self.dt/self.I_tau), 0., 1.)
-        beta  = torch.clamp(torch.exp(-self.dt/self.V_tau), 0., 1.)
+        alpha = torch.clip(torch.exp(-self.dt / self.I_tau), 0., 1.)
+        beta = torch.clip(torch.exp(-self.dt / self.V_tau), 0., 1.)
 
         # integrate new input
         I_in = F.dropout(self.input_con(inpt), self.input_dropout, True, False)
@@ -292,8 +292,8 @@ class Readout(Module):
         # integrate new input
         I_in = F.dropout(self.input_con(inpt), self.input_dropout, True, False)
 
-        alpha = torch.exp(-self.dt / self.I_tau)
-        beta = torch.exp(-self.dt / self.V_tau)
+        alpha = torch.clip(torch.exp(-self.dt / self.I_tau), 0., 1.)
+        beta = torch.clip(torch.exp(-self.dt / self.V_tau), 0., 1.)
 
         self.I_t = alpha * self.I_t + I_in
         if self.bias is not None:
@@ -342,18 +342,26 @@ class TransitionNetRSNNPB(Module):
 
     def forward(self, state: Tensor, action: Tensor) -> [Tensor, Tensor]:
 
+        #print('transition')
+        #print('state shape b', state.shape)
+        #print('action shape b', action.shape)
         if len(state.shape) == 2:
             state.unsqueeze_(0)
 
         if len(action.shape) == 2:
             action.unsqueeze_(0)
 
-        if not self.state_initialized:
-            self.init_state(state.shape[1])
-
         T = state.shape[0]
-        mu_outs = []
-        logvar_outs = []
+        N = state.shape[1]
+        D = state.shape[2]
+        #print('state shape', state.shape)
+        #print('action shape', action.shape)
+
+        if not self.state_initialized:
+            self.init_state(N)
+
+        mu_outs = torch.empty((T, N, D), device=next(self.basis.mu.parameters()).device)
+        logvar_outs = torch.empty((T, N, D), device=next(self.basis.logvar.parameters()).device)
         for t in range(T):
             mus, logvars = [], []
             for i in range(self.repeat_input):
@@ -361,15 +369,15 @@ class TransitionNetRSNNPB(Module):
                 mus.append(mu)
                 logvars.append(logvar)
             if self.out_style == 'last':
-                mu_outs.append(mu)
-                logvar_outs.append(logvar)
+                mu_outs[t] = mu
+                logvar_outs[t] = logvar
             elif self.out_style == 'mean':
                 mus = torch.stack(mus)
                 logvars = torch.stack(logvars)
-                mu_outs.append(mus.mean(dim=0))
-                logvar_outs.append(logvars.mean(dim=0))
+                mu_outs[t] = mus.mean(dim=0)
+                logvar_outs[t] = logvars.mean(dim=0)
 
-        return torch.stack(mu_outs), torch.stack(logvar_outs)
+        return mu_outs, logvar_outs
 
     def predict(self, state: Tensor, action: Tensor, deterministic: bool = False):
 
@@ -387,6 +395,7 @@ class PolicyNetFFSNNPB(Module):
                  dtype=None, flif_kwargs: dict = {'recurrent': False}, readout_kwargs: dict = {}) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(PolicyNetFFSNNPB, self).__init__()
+        self.action_dim = action_dim
 
         layers = OrderedDict()
         layers['lif1'] = FLIF_B(state_dim + target_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
@@ -420,18 +429,27 @@ class PolicyNetFFSNNPB(Module):
 
     def forward(self, state: Tensor, target: Tensor) -> [Tensor, Tensor]:
 
+        #print('policy')
+        #print('state shape b', state.shape, len(state.shape), len(state.shape)==2)
+        #print('target shape b', target.shape, len(target.shape), len(target.shape)==2)
         if len(state.shape) == 2:
             state.unsqueeze_(0)
 
         if len(target.shape) == 2:
             target.unsqueeze_(0)
 
-        if not self.state_initialized:
-            self.init_state(state.shape[1])
+        #print('state shape', state.shape)
+        #print('target shape', target.shape)
 
         T = state.shape[0]
-        mu_outs = []
-        logvar_outs = []
+        N = state.shape[1]
+        D = state.shape[2]
+
+        if not self.state_initialized:
+            self.init_state(N)
+
+        mu_outs = torch.empty((T, N, self.action_dim), device=next(self.basis.mu.parameters()).device)
+        logvar_outs = torch.empty((T, N, self.action_dim), device=next(self.basis.logvar.parameters()).device)
         for t in range(T):
             mus, logvars = [], []
             for i in range(self.repeat_input):
@@ -439,15 +457,15 @@ class PolicyNetFFSNNPB(Module):
                 mus.append(mu)
                 logvars.append(logvar)
             if self.out_style == 'last':
-                mu_outs.append(mu)
-                logvar_outs.append(logvar)
+                mu_outs[t] = mu
+                logvar_outs[t] = logvar
             elif self.out_style == 'mean':
                 mus = torch.stack(mus)
                 logvars = torch.stack(logvars)
-                mu_outs.append(mus.mean(dim=0))
-                logvar_outs.append(logvars.mean(dim=0))
+                mu_outs[t] = mus.mean(dim=0)
+                logvar_outs[t] = logvars.mean(dim=0)
 
-        return torch.stack(mu_outs), torch.stack(logvar_outs)
+        return mu_outs, logvar_outs
 
     def predict(self, state: Tensor, target: Tensor, deterministic: bool = False) -> Tensor:
 

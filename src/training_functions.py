@@ -59,10 +59,14 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
     }
 
 def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayMemory, optimizer: torch.optim.Optimizer,
-                                batch_size: int, warmup_steps: int = 20, n_batches: int = 1,
+                                batch_size: int, warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20,
                                 max_norm: Optional[float] = None, **kwargs):
 
     """function used to update the parameters of a probabilistic transition network"""
+
+    device = next(transition_model.parameters()).device
+
+    steps = warmup_steps + unroll_steps
 
     losses = []
     grad_norms = []
@@ -70,15 +74,28 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
 
-        maxlen = -1
-        while maxlen <= warmup_steps:
-            # TODO: find better solution for this!
-            episode_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, reward, next_state)]
-            maxlen = min([len(e) for e in episode_batch])
+        # get a batch of episodes
+        episode_batch = []
+        while len(episode_batch) < batch_size:
+            sample_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, reward, next_state)]
+            for episode in sample_batch:
+                if len(episode) >= steps:
+                    episode_batch.append(episode)
+                    if len(episode_batch) == batch_size: break
 
-        state_batch = torch.stack([torch.stack([step[0].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
-        action_batch = torch.stack([torch.stack([step[2].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
-        next_state_batch = torch.stack([torch.stack([step[4].squeeze() for step in episode[:maxlen]]) for episode in episode_batch]).transpose(0, 1)
+        # make a random sample from each episode of length = warmup_steps
+        state_dim = episode_batch[0][0][0].size(-1)
+        action_dim = episode_batch[0][0][2].size(-1)
+
+        state_batch = torch.zeros((steps, batch_size, state_dim), device=device)
+        action_batch = torch.zeros((steps, batch_size, action_dim), device=device)
+        next_state_batch = torch.zeros((steps, batch_size, state_dim), device=device)
+
+        for j in range(batch_size):
+            r = torch.randint(low=0, high=len(episode_batch[j]) - steps, size=(1,))
+            state_batch[:, j, :] = torch.stack([step[0].squeeze() for step in episode_batch[j][r:r+steps]])
+            action_batch[:, j, :] = torch.stack([step[2].squeeze() for step in episode_batch[j][r:r+steps]])
+            next_state_batch[:, j, :] = torch.stack([step[4].squeeze() for step in episode_batch[j][r:r+steps]])
 
         transition_model.reset_state()
         s_hat_delta_mu, s_hat_delta_logvar = transition_model(state_batch, action_batch)
@@ -252,8 +269,9 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
         while len(episode_batch) < batch_size:
             sample_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, next_state)]
             for episode in sample_batch:
-                episode_batch.append(episode)
-                if len(episode_batch) == batch_size: break
+                if len(episode) >= warmup_steps:
+                    episode_batch.append(episode)
+                    if len(episode_batch) == batch_size: break
 
         # make a random sample from each episode of length = warmup_steps
         state_dim = episode_batch[0][0][0].size(-1)
@@ -336,10 +354,11 @@ def baseline_prediction(transitionnet: Module, episode: list) -> dict:
     """function used to evaluate transition network predictions against baseline values"""
 
     transitionnet.reset_state()
+    T = len(episode)
 
-    states = torch.stack([step[0] for step in episode])
-    actions = torch.stack([step[2] for step in episode])
-    next_states = torch.stack([step[4] for step in episode])
+    states = torch.stack([step[0] for step in episode]).view((T, 1, -1))
+    actions = torch.stack([step[2] for step in episode]).view((T, 1, -1))
+    next_states = torch.stack([step[4] for step in episode]).view((T, 1, -1))
 
     # predict next state based on action with transition net
     delta_states = transitionnet.predict(states, actions, deterministic=True)

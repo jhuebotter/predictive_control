@@ -30,9 +30,6 @@ else:
     #config = get_config()
     config = get_config(args.config)
 
-print(type(config['general']['learning']['params']['max_norm']))
-exit()
-
 seed = config['seed']
 np.random.seed(seed)
 torch.manual_seed(seed)

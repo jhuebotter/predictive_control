@@ -11,7 +11,7 @@ def pretty(d: dict, indent: int = 0) -> None:
             print('\t' * indent + str(key) + ':')
             pretty(value, indent + 1)
         else:
-            print('\t' * indent + f'{key:30}: {str(value):20}')
+            print('\t' * indent + f'{key:30}: {str(value):20}, {type(value)}')
 
 
 def read_config(path: str = 'config.yaml', verbose: bool = True) -> dict:
@@ -55,6 +55,9 @@ def omegaconf2dict(conf: omegaconf.dictconfig.DictConfig) -> dict:
     for k, v in conf.items():
         if isinstance(v, omegaconf.dictconfig.DictConfig):
             v = omegaconf2dict(v)
+        if type(v) is str and v.lower() == 'none':
+            v = None
         d.update({k: v})
+        print(k, v, type(v))
 
     return d

@@ -45,7 +45,7 @@ def train_transitionnetRNNPBNLL(transition_model: Module, memory: ReplayMemory, 
         optimizer.zero_grad()
         loss.backward()
         grad_norms.append(gradnorm(transition_model))
-        if max_norm is not None:
+        if max_norm:
             clip_grad_norm_(transition_model.parameters(), max_norm)
         clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()
@@ -113,7 +113,7 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
         optimizer.zero_grad()
         loss.backward()
         grad_norms.append(gradnorm(transition_model))
-        if max_norm is not None:
+        if max_norm:
             clip_grad_norm_(transition_model.parameters(), max_norm)
         clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()
@@ -219,7 +219,7 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
         reg_losses.append(reg_loss_.item())
         loss.backward()
         grad_norms.append(gradnorm(policy_model))
-        if max_norm is not None:
+        if max_norm:
             clip_grad_norm_(transition_model.parameters(), max_norm)
         clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()
@@ -334,7 +334,7 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
         reg_losses.append(reg_loss_.item())
         loss.backward()
         grad_norms.append(gradnorm(policy_model))
-        if max_norm is not None:
+        if max_norm:
             clip_grad_norm_(transition_model.parameters(), max_norm)
         clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()

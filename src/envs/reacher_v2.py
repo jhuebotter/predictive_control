@@ -40,8 +40,7 @@ class Reacherv2Env(gym.Env):
         self.epsilon = 0.05
 
         self.process_noise_std = np.array([0., 0., 0., 0.])
-        self.observation_noise_std = np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01])
-
+        self.observation_noise_std = np.ones(8) * 0.01
         self.l1 = 0.5
         self.l2 = 0.4
         self.max_reach = self.l1 + self.l2
@@ -142,10 +141,11 @@ class Reacherv2Env(gym.Env):
             done = True
             max_steps = True
 
-        reward = - np.linalg.norm(self.target[:2] - self.state[:2]) * self.dt
-
         observation = self.make_observation(self.state)
+        ob_rew = self.make_observation(self.state, noise=False)
         target_observation = self.make_observation(self.target, noise=False)
+
+        reward = - np.linalg.norm(ob_rew[:2] - target_observation[:2]) * self.dt
 
         info = {'on_target': on_target, 'max_steps': max_steps}
 

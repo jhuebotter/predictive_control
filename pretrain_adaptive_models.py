@@ -116,48 +116,50 @@ while step <= config['total_env_steps']:
         else:
             render_mode = None
 
-        # reset the environment
-        observation, target = env.reset()
-        observation = torch.tensor(observation, device=device, dtype=torch.float32)
-        target = torch.tensor(target, device=device, dtype=torch.float32)
+        with torch.no_grad():
 
-        # reset the network states
-        policynet.reset_state()
-        transitionnet.reset_state()
+            # reset the environment
+            observation, target = env.reset()
+            observation = torch.tensor(observation, device=device, dtype=torch.float32)
+            target = torch.tensor(target, device=device, dtype=torch.float32)
 
-        episode = []
-        total_reward = 0.
-        done = False
-        while not done:
+            # reset the network states
+            policynet.reset_state()
+            transitionnet.reset_state()
 
-            # chose action and advance simulation
-            action = policynet.predict(observation.view(1, 1, -1), target.view(1, 1, -1)).flatten()
-            a = action.detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
-            next_observation, next_target, reward, done, info = env.step(a)
-            next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32)
-            next_target = torch.tensor(next_target, device=device, dtype=torch.float32)
+            episode = []
+            total_reward = 0.
+            done = False
+            while not done:
 
-            # save transition for later
-            transition = (observation.clone(), target.clone(), action.detach().clone(), reward, next_observation.clone())
-            episode.append(transition)
+                # chose action and advance simulation
+                action = policynet.predict(observation.view(1, 1, -1), target.view(1, 1, -1)).flatten()
+                a = action.detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
+                next_observation, next_target, reward, done, info = env.step(a)
+                next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32)
+                next_target = torch.tensor(next_target, device=device, dtype=torch.float32)
 
-            if render_mode:
-                pixels = env.render(mode=render_mode)
-                frames.append(pixels)
+                # save transition for later
+                transition = (observation.clone(), target.clone(), action.detach().clone(), reward, next_observation.clone())
+                episode.append(transition)
 
-            # environment step complete
-            observation = next_observation
-            target = next_target
-            total_reward += reward
-            step += 1
+                if render_mode:
+                    pixels = env.render(mode=render_mode)
+                    frames.append(pixels)
 
-        # save episode to memory
-        memory.append(episode)
-        rewards.append({'mean episode reward training': total_reward})
-        episode_count += 1
+                # environment step complete
+                observation = next_observation
+                target = next_target
+                total_reward += reward
+                step += 1
 
-        # compute prediction performance against baseline
-        baseline_predictions.append(baseline_prediction(transitionnet, episode))
+            # save episode to memory
+            memory.append(episode)
+            rewards.append({'mean episode reward training': total_reward})
+            episode_count += 1
+
+            # compute prediction performance against baseline
+            baseline_predictions.append(baseline_prediction(transitionnet, episode))
 
     baseline_results = dict_mean(baseline_predictions)
     rewards = dict_mean(rewards)

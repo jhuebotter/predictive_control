@@ -161,7 +161,7 @@ def make_predictions(episode: list, transitionnet: Module, h: int = 100, determi
 
     return predictions
 
-
+@torch.no_grad()
 def animate_predictions(episode: list, transitionnet: Module, labels: list, h: int = 100, fps: float = 20.,
                         save: Optional[Union[Path, str]] = './animation.mp4', deterministic: bool = True, dpi: int = 50,
                         font_size: int = 12) -> object:

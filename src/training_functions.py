@@ -74,6 +74,7 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
 
+        transition_model.zero_grad(set_to_none=True)
         # get a batch of episodes
         episode_batch = []
         while len(episode_batch) < batch_size:
@@ -110,7 +111,6 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
         loss = F.gaussian_nll_loss(s_hat_mu, next_state_batch, s_hat_delta_var)
 
         losses.append(loss.item())
-        optimizer.zero_grad()
         loss.backward()
         grad_norms.append(gradnorm(transition_model))
         if max_norm:
@@ -259,7 +259,8 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
     pbar = tqdm(range(n_batches), desc=f"{'updating policy network':30}")
     for i in pbar:
 
-        optimizer.zero_grad()
+        policy_model.zero_grad(set_to_none=True)
+        transition_model.zero_grad(set_to_none=True)
         loss = torch.zeros(1, device=device)
         action_loss_ = torch.zeros(1, device=device)
         reg_loss_ = torch.zeros(1, device=device)
@@ -335,8 +336,8 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
         loss.backward()
         grad_norms.append(gradnorm(policy_model))
         if max_norm:
-            clip_grad_norm_(transition_model.parameters(), max_norm)
-        clipped_grad_norms.append(gradnorm(transition_model))
+            clip_grad_norm_(policy_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(policy_model))
         optimizer.step()
 
         pbar.set_postfix_str(f'loss: {loss.item()}')
@@ -349,7 +350,7 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
         'policy model clipped grad norm': np.mean(clipped_grad_norms),
     }
 
-
+@torch.no_grad()
 def baseline_prediction(transitionnet: Module, episode: list) -> dict:
     """function used to evaluate transition network predictions against baseline values"""
 

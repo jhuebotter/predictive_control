@@ -4,6 +4,8 @@ from torch import nn, Tensor
 import torch.nn.functional as F
 from torch.nn import Module, init
 from collections import OrderedDict
+from src.utils import reparameterize as rp
+
 
 class Offset(Module):
     """learnable initial state of any RNN layer"""
@@ -112,9 +114,6 @@ class TransitionNetLRNNPB(Module):
 
     def forward(self, state: Tensor, action: Tensor) -> [Tensor, Tensor]:
 
-        #print('transition')
-        #print('state shape b', state.shape)
-        #print('action shape b', action.shape)
         if len(state.shape) == 2:
             state.unsqueeze_(0)
 
@@ -124,8 +123,6 @@ class TransitionNetLRNNPB(Module):
         T = state.shape[0]
         N = state.shape[1]
         D = state.shape[2]
-        #print('state shape', state.shape)
-        #print('action shape', action.shape)
 
         if not self.state_initialized:
             self.init_state(N)

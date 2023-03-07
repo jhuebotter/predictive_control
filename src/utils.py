@@ -76,7 +76,7 @@ class ReplayMemory:
 def reparameterize(mu: Tensor, logvar: Tensor) -> Tensor:
     """perform reparametrization trick for a Gaussian distribution"""
     
-    std = torch.exp(0.5 * logvar)
+    std = logvar.mul(0.5).exp_()
     eps = torch.randn_like(std)
     
     return eps * std + mu

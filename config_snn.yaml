@@ -46,7 +46,7 @@ policy:
   learning:
     params:
       beta: 0.0
-      deterministic_transition: True
+      deterministic_transition: False
 
 # transition model parameters
 transition:

@@ -220,8 +220,8 @@ def train_policynetPB(policy_model: Module, transition_model: Module, memory: Re
         loss.backward()
         grad_norms.append(gradnorm(policy_model))
         if max_norm:
-            clip_grad_norm_(transition_model.parameters(), max_norm)
-        clipped_grad_norms.append(gradnorm(transition_model))
+            clip_grad_norm_(policy_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(policy_model))
         optimizer.step()
 
         pbar.set_postfix_str(f'loss: {loss.item()}')

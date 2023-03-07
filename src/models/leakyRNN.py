@@ -1,7 +1,9 @@
 from collections.abc import Callable
 import torch
 from torch import nn, Tensor
-from torch.nn import Module
+import torch.nn.functional as F
+from torch.nn import Module, init
+from collections import OrderedDict
 
 class Offset(Module):
     """learnable initial state of any RNN layer"""
@@ -63,3 +65,95 @@ class LRNN(Module):
             out.append(self.act_func(h))  # compute output
 
         return torch.stack(out), h
+
+
+class TransitionNetLRNNPB(Module):
+    def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_layers: int = 1,
+                 bias: bool = True, act_func: Callable = F.leaky_relu, repeat_input: int = 1, out_style: str = 'mean', device=None,
+                 dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(TransitionNetLRNNPB, self).__init__()
+
+        layers = OrderedDict()
+        layers['lrnn1'] = LRNN(state_dim + action_dim, hidden_dim, act_func, bias=bias, **factory_kwargs)
+        for i in range(num_layers - 1):
+            layers[f'lrnn{2+i}'] = LRNN(hidden_dim, hidden_dim, act_func, bias=bias, **factory_kwargs)
+        layers['mu'] = nn.Linear(hidden_dim, state_dim, bias, **factory_kwargs)
+        layers['logvar'] = nn.Linear(hidden_dim, state_dim, bias, **factory_kwargs)
+
+        self.basis = nn.ModuleDict(layers)
+
+        self.num_layers = num_layers
+        self.act_func = act_func
+        self.bias = bias
+        init.zeros_(self.basis.fc_mu.bias)
+        init.ones_(self.basis.fc_var.bias)
+
+        self.state_initialized = False
+        assert repeat_input >= 1
+        self.repeat_input = repeat_input
+        assert out_style.lower() in ['mean', 'last']
+        self.out_style = out_style.lower()
+
+    def reset_state(self) -> None:
+        self.state_initialized = False
+
+    def init_state(self, batch_size: int = 1) -> None:
+        for name, layer in self.basis.items():
+            layer.init_state(batch_size)
+        self.state_initialized = True
+
+    def step(self, state: Tensor, action: Tensor) -> [Tensor, Tensor]:
+        x = torch.cat((state, action), -1)
+        for name, layer in self.basis.items():
+            if 'lrnn' in name.lower():
+                x = layer(x)
+        return self.basis.mu(x), self.basis.logvar(x)
+
+    def forward(self, state: Tensor, action: Tensor) -> [Tensor, Tensor]:
+
+        #print('transition')
+        #print('state shape b', state.shape)
+        #print('action shape b', action.shape)
+        if len(state.shape) == 2:
+            state.unsqueeze_(0)
+
+        if len(action.shape) == 2:
+            action.unsqueeze_(0)
+
+        T = state.shape[0]
+        N = state.shape[1]
+        D = state.shape[2]
+        #print('state shape', state.shape)
+        #print('action shape', action.shape)
+
+        if not self.state_initialized:
+            self.init_state(N)
+
+        mu_outs = torch.empty((T, N, D), device=next(self.basis.mu.parameters()).device)
+        logvar_outs = torch.empty((T, N, D), device=next(self.basis.logvar.parameters()).device)
+        for t in range(T):
+            mus, logvars = [], []
+            for i in range(self.repeat_input):
+                mu, logvar = self.step(state[t], action[t])
+                mus.append(mu)
+                logvars.append(logvar)
+            if self.out_style == 'last':
+                mu_outs[t] = mu
+                logvar_outs[t] = logvar
+            elif self.out_style == 'mean':
+                mus = torch.stack(mus)
+                logvars = torch.stack(logvars)
+                mu_outs[t] = mus.mean(dim=0)
+                logvar_outs[t] = logvars.mean(dim=0)
+
+        return mu_outs, logvar_outs
+
+    def predict(self, state: Tensor, action: Tensor, deterministic: bool = False):
+
+        mu, logvar = self(state, action)
+
+        if deterministic:
+            return mu
+        else:
+            return rp(mu, logvar)

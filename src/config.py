@@ -58,6 +58,5 @@ def omegaconf2dict(conf: omegaconf.dictconfig.DictConfig) -> dict:
         if type(v) is str and v.lower() == 'none':
             v = None
         d.update({k: v})
-        print(k, v, type(v))
 
     return d

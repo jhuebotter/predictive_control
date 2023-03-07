@@ -144,6 +144,7 @@ class FLIF_B(Module):
 
     def reset_parameters(self) -> None:
 
+        # TODO: update this!
         init.kaiming_normal_(self.input_con.weight)         # adapt ?
         if self.input_density < 1.:
             self.input_con.weight.data = sparsify_matrix(self.input_con.weight.data, self.input_density)   # TODO: make this a hyperparamter
@@ -170,8 +171,9 @@ class FLIF_B(Module):
             init.trunc_normal_(self.I_tau, mean=self.I_tau_mean, std=self.I_tau_std, a=0., b=1.)
         else:
             init.constant_(self.I_tau, self.I_tau_mean)
+        # TODO: update this!
         if self.bias is not None:
-            init.constant_(self.bias, 0.)
+            init.zeros_(self.bias)
 
     def init_state(self, batch_size: int) -> None:
 
@@ -256,6 +258,7 @@ class Readout(Module):
 
     def reset_parameters(self) -> None:
 
+        # TODO: update this!
         init.kaiming_normal_(self.input_con.weight)  # adapt ?
         if self.input_density < 1.:
             self.input_con.weight.data = sparsify_matrix(
@@ -274,9 +277,10 @@ class Readout(Module):
         else:
             init.constant_(self.I_tau, self.I_tau_mean)
         if self.bias is not None:  # adjust to sensible value
-            fan_in, _ = init._calculate_fan_in_and_fan_out(self.recurrent_con.weight)
-            bound = 0.1 / math.sqrt(fan_in) if fan_in > 0 else 0
-            init.uniform_(self.bias, -bound, bound)
+            #fan_in, _ = init._calculate_fan_in_and_fan_out(self.recurrent_con.weight)
+            #bound = 0.1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            #init.uniform_(self.bias, -bound, bound)
+            init.zeros_(self.bias)
 
     def init_state(self, batch_size: int) -> None:
 

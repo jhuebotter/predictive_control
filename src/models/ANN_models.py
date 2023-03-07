@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import Module, Parameter, init
 from src.models.leakyRNN import LRNN
 from src.extratyping import *
 from src.utils import reparameterize as rp
@@ -388,16 +389,12 @@ class PolicyNetPBAdaptive(AdaptiveModel):
                  act_func: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 
-        #self.fc1 = nn.Linear(state_dim + target_dim, hidden_dim, bias)
-        #self.fc_mu = nn.Linear(state_dim + target_dim, hidden_dim, bias)
-        #self.fc_var = nn.Linear(hidden_dim, action_dim, bias)
         self.basis = nn.ModuleDict({
             'fc1': nn.Linear(state_dim + target_dim, hidden_dim, bias),
             'fc_mu': nn.Linear(hidden_dim, action_dim, bias),
             'fc_var': nn.Linear(hidden_dim, action_dim, bias)
         })
-        #self.fc_mu_adapt = nn.Linear(hidden_dim, action_dim, bias)
-        #self.fc_var_adapt = nn.Linear(hidden_dim, action_dim, bias)
+
         self.adaptive_layers = nn.ModuleDict({
             'fc_mu_adapt': nn.Linear(hidden_dim, action_dim, bias),
             'fc_var_adapt': nn.Linear(hidden_dim, action_dim, bias)
@@ -405,6 +402,8 @@ class PolicyNetPBAdaptive(AdaptiveModel):
         self.bias = bias
         self.act_func = act_func
         self.reset_adaptation_weights()
+        init.zeros_(self.basis.fc_mu.bias)
+        init.ones_(self.basis.fc_var.bias)
 
 
     def forward(self, state: Tensor, target: Tensor) -> (Tensor, Tensor):
@@ -438,16 +437,12 @@ class TransitionNetGRUPBAdaptive(AdaptiveModel):
                  act_func: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 
-        #self.gru1 = nn.GRU(state_dim + action_dim, hidden_dim, num_layers, bias)
-        #self.fc_mu = nn.Linear(hidden_dim, state_dim, bias)
-        #self.fc_var = nn.Linear(hidden_dim, state_dim, bias)
         self.basis = nn.ModuleDict({
             'gru1': nn.GRU(state_dim + action_dim, hidden_dim, num_layers, bias),
             'fc_mu': nn.Linear(hidden_dim, state_dim, bias),
             'fc_var': nn.Linear(hidden_dim, state_dim, bias)
         })
-        #self.fc_mu_adapt = nn.Linear(hidden_dim, state_dim, bias)
-        #self.fc_var_adapt = nn.Linear(hidden_dim, state_dim, bias)
+
         self.adaptive_layers = nn.ModuleDict({
             'fc_mu_adapt': nn.Linear(hidden_dim, state_dim, bias),
             'fc_var_adapt': nn.Linear(hidden_dim, state_dim, bias)
@@ -455,6 +450,8 @@ class TransitionNetGRUPBAdaptive(AdaptiveModel):
         self.act_func = act_func
         self.bias = bias
         self.reset_adaptation_weights()
+        init.zeros_(self.basis.fc_mu.bias)
+        init.ones_(self.basis.fc_var.bias)
 
 
     def forward(self, state: Tensor, action: Tensor) -> (Tensor, Tensor):

@@ -32,6 +32,8 @@ general:
 policy:
   model:
     type: MLPPBadapt
+    params:
+      num_ff_layers: 1
   learning:
     params:
       deterministic_transition: False
@@ -41,6 +43,9 @@ policy:
 transition:
   model:
     type: GRUPBadapt
+    params:
+      num_rec_layers: 1
+      num_ff_layers: 1
 
 # training parameters
 memory_size: 3_000

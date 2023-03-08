@@ -5,6 +5,7 @@ from torch.nn import Module, Parameter, init
 from src.models.leakyRNN import LRNN
 from src.extratyping import *
 from src.utils import reparameterize as rp
+from collections import OrderedDict
 
 class StatefulModel(Module):
     """Base class for models with a hidden stat """
@@ -385,15 +386,18 @@ class AdaptiveModel(StatefulModel):
 class PolicyNetPBAdaptive(AdaptiveModel):
     """probabilistic MLP policy network"""
 
-    def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, bias: bool = True,
-                 act_func: Callable = F.leaky_relu, **kwargs) -> None:
+    def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_ff_layers: int = 0,
+                 bias: bool = True, act_func: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 
-        self.basis = nn.ModuleDict({
-            'fc1': nn.Linear(state_dim + target_dim, hidden_dim, bias),
-            'fc_mu': nn.Linear(hidden_dim, action_dim, bias),
-            'fc_var': nn.Linear(hidden_dim, action_dim, bias)
-        })
+        layers = OrderedDict()
+        layers['fc_in'] = nn.Linear(state_dim + target_dim, hidden_dim, bias)
+        for i in range(num_ff_layers):
+            layers[f'fc_h{i}'] = nn.Linear(hidden_dim, hidden_dim, bias)
+        layers['fc_mu'] = nn.Linear(hidden_dim, action_dim, bias)
+        layers['fc_var'] = nn.Linear(hidden_dim, action_dim, bias)
+
+        self.basis = nn.ModuleDict(layers)
 
         self.adaptive_layers = nn.ModuleDict({
             'fc_mu_adapt': nn.Linear(hidden_dim, action_dim, bias),
@@ -414,8 +418,11 @@ class PolicyNetPBAdaptive(AdaptiveModel):
         if len(target.shape) == 3:
             target.squeeze_(0)
 
-        x = self.basis['fc1'](torch.cat((state, target), -1))
+        x = self.basis['fc_in'](torch.cat((state, target), -1))
         x = self.act_func(x)
+        for name, layer in self.basis.items():
+            if 'fc_h' in name.lower():
+                x = self.act_func(layer(x))
         mu = self.basis['fc_mu'](x)  # + self.adaptive_layers['fc_mu_adapt'](x)
         logvar = self.basis['fc_var'](x)  # + self.adaptive_layers['fc_var_adapt'](x)
 
@@ -433,15 +440,18 @@ class PolicyNetPBAdaptive(AdaptiveModel):
 class TransitionNetGRUPBAdaptive(AdaptiveModel):
     """probabilistic RNN transition network"""
 
-    def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_layers: int = 1, bias: bool = True,
-                 act_func: Callable = F.leaky_relu, **kwargs) -> None:
+    def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_rec_layers: int = 1, num_ff_layers: int = 0,
+                 bias: bool = True, act_func: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 
-        self.basis = nn.ModuleDict({
-            'gru1': nn.GRU(state_dim + action_dim, hidden_dim, num_layers, bias),
-            'fc_mu': nn.Linear(hidden_dim, state_dim, bias),
-            'fc_var': nn.Linear(hidden_dim, state_dim, bias)
-        })
+        layers = OrderedDict()
+        layers['gru1'] = nn.GRU(state_dim + action_dim, hidden_dim, num_rec_layers, bias)
+        for i in range(num_ff_layers):
+            layers[f'fc_h{i}'] = nn.Linear(hidden_dim, hidden_dim, bias)
+        layers['fc_mu'] = nn.Linear(hidden_dim, state_dim, bias)
+        layers['fc_var'] = nn.Linear(hidden_dim, state_dim, bias)
+
+        self.basis = nn.ModuleDict(layers)
 
         self.adaptive_layers = nn.ModuleDict({
             'fc_mu_adapt': nn.Linear(hidden_dim, state_dim, bias),
@@ -464,6 +474,9 @@ class TransitionNetGRUPBAdaptive(AdaptiveModel):
 
         x, self.h = self.basis['gru1'](torch.cat((state, action), -1), self.h)
         x = self.act_func(x)
+        for name, layer in self.basis.items():
+            if 'fc_h' in name.lower():
+                x = self.act_func(layer(x))
         mu = self.basis['fc_mu'](x)  # + self.adaptive_layers['fc_mu_adapt'](x)
         logvar = self.basis['fc_var'](x)  # + self.adaptive_layers['fc_var_adapt'](x)
 

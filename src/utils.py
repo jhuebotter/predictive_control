@@ -301,7 +301,7 @@ def gradnorm(model: torch.nn.Module) -> float:
     This function was taken 1:1 from the pytoch forum:
     https://discuss.pytorch.org/t/check-the-norm-of-gradients/27961/2"""
 
-    total_norm = 0
+    total_norm = 0.
     parameters = [p for p in model.parameters() if p.grad is not None and p.requires_grad]
     for p in parameters:
         param_norm = p.grad.detach().data.norm(2)

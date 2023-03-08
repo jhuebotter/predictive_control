@@ -71,6 +71,10 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
     losses = []
     grad_norms = []
     clipped_grad_norms = []
+    logvars_mu = []
+    logvars_std = []
+    vars_mu = []
+    vars_std = []
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
 
@@ -108,7 +112,7 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
         s_hat_mu = s_hat_delta_mu + state_batch
         s_hat_delta_var = torch.exp(s_hat_delta_logvar)
 
-        loss = F.gaussian_nll_loss(s_hat_mu, next_state_batch, s_hat_delta_var)
+        loss = F.gaussian_nll_loss(s_hat_mu[warmup_steps:], next_state_batch[warmup_steps:], s_hat_delta_var[warmup_steps:])
 
         losses.append(loss.item())
         loss.backward()
@@ -118,14 +122,22 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
         clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()
 
+        logvars_mu.append(s_hat_delta_logvar[warmup_steps:].mean().item())
+        logvars_std.append(s_hat_delta_logvar[warmup_steps:].std().item())
+        vars_mu.append(s_hat_delta_var[warmup_steps:].mean().item())
+        vars_std.append(s_hat_delta_var[warmup_steps:].std().item())
+
         pbar.set_postfix_str(f'loss: {loss.item()}')
 
     return {
         'transition model loss': np.mean(losses),
         'transition model grad norm': np.mean(grad_norms),
         'transition model clipped grad norm': np.mean(clipped_grad_norms),
+        'transition model mean logvars mean': np.mean(logvars_mu),
+        'transition model mean logvars std': np.mean(logvars_std),
+        'transition model mean vars mean': np.mean(vars_mu),
+        'transition model mean vars std': np.mean(vars_std)
     }
-
 
 
 def train_policynetPB(policy_model: Module, transition_model: Module, memory: ReplayMemory,
@@ -250,6 +262,10 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
 
     grad_norms = []
     clipped_grad_norms = []
+    logvars_mu = []
+    logvars_std = []
+    vars_mu = []
+    vars_std = []
 
     # TODO: this should be parameter somewhere
     if beta:
@@ -304,8 +320,14 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
 
             # sample an action from policy network
             a_mu, a_logvar = policy_model(new_state_hat, t)
+            a_var = torch.exp(a_logvar)    # this is just for logging now and can probably be deleted later
             a_std = torch.exp(0.5 * a_logvar)
             a = a_mu + a_std * torch.randn_like(a_mu)
+
+            logvars_mu.append(a_logvar.mean().item())
+            logvars_std.append(a_logvar.std().item())
+            vars_mu.append(a_var.mean().item())
+            vars_std.append(a_var.std().item())
 
             s_hat_delta = transition_model.predict(new_state_hat, a, deterministic=deterministic_transition)
             s_hat = s_hat_delta + new_state_hat
@@ -348,6 +370,10 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
         'policy model reg loss': np.mean(reg_losses),
         'policy model grad norm': np.mean(grad_norms),
         'policy model clipped grad norm': np.mean(clipped_grad_norms),
+        'policy model mean logvars mean': np.mean(logvars_mu),
+        'policy model mean logvars std': np.mean(logvars_std),
+        'policy model mean vars mean': np.mean(vars_mu),
+        'policy model mean vars std': np.mean(vars_std)
     }
 
 @torch.no_grad()

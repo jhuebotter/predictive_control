@@ -140,6 +140,93 @@ def train_transitionnetRNNPBNLL_sample(transition_model: Module, memory: ReplayM
     }
 
 
+def train_transitionnetRNNPBNLL_sample_unroll(transition_model: Module, memory: ReplayMemory, optimizer: torch.optim.Optimizer,
+                                batch_size: int, warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20,
+                                max_norm: Optional[float] = None, **kwargs):
+
+    """function used to update the parameters of a probabilistic transition network"""
+
+    device = next(transition_model.parameters()).device
+
+    steps = warmup_steps + unroll_steps
+
+    losses = []
+    grad_norms = []
+    clipped_grad_norms = []
+    logvars_mu = []
+    logvars_std = []
+    vars_mu = []
+    vars_std = []
+    pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
+    for i in pbar:
+
+        transition_model.zero_grad(set_to_none=True)
+        # get a batch of episodes
+        episode_batch = []
+        while len(episode_batch) < batch_size:
+            sample_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, reward, next_state)]
+            for episode in sample_batch:
+                if len(episode) >= steps:
+                    episode_batch.append(episode)
+                    if len(episode_batch) == batch_size: break
+
+        # make a random sample from each episode of length = warmup_steps
+        state_dim = episode_batch[0][0][0].size(-1)
+        action_dim = episode_batch[0][0][2].size(-1)
+
+        state_batch = torch.zeros((steps, batch_size, state_dim), device=device)
+        action_batch = torch.zeros((steps, batch_size, action_dim), device=device)
+        next_state_batch = torch.zeros((steps, batch_size, state_dim), device=device)
+
+        for j in range(batch_size):
+            r = torch.randint(low=0, high=len(episode_batch[j]) - steps, size=(1,))
+            state_batch[:, j, :] = torch.stack([step[0].squeeze() for step in episode_batch[j][r:r+steps]])
+            action_batch[:, j, :] = torch.stack([step[2].squeeze() for step in episode_batch[j][r:r+steps]])
+            next_state_batch[:, j, :] = torch.stack([step[4].squeeze() for step in episode_batch[j][r:r+steps]])
+
+        # reset and warm up
+        transition_model.reset_state()
+        s_hat_delta_mu, s_hat_delta_logvar = transition_model(state_batch[:warmup_steps], action_batch[:warmup_steps])
+        s_hat_delta_std = torch.exp(0.5 * s_hat_delta_logvar)
+        s_hat = state_batch[warmup_steps-1] + s_hat_delta_mu[-1] + s_hat_delta_std[-1] * torch.randn_like(s_hat_delta_std[-1], device=s_hat_delta_std.device)
+
+        s_hat_mus = torch.empty((unroll_steps, batch_size, state_dim))
+        s_hat_vars = torch.empty((unroll_steps, batch_size, state_dim))
+
+        for k in range(unroll_steps):
+            s_hat_delta_mu, s_hat_delta_logvar = transition_model(s_hat, action_batch[warmup_steps+k])
+            s_hat_mus[k] = s_hat + s_hat_delta_mu
+            s_hat_vars[k] = torch.exp(s_hat_delta_logvar)
+            s_hat = s_hat + s_hat_delta_mu + torch.exp(0.5 * s_hat_delta_logvar) * torch.randn_like(s_hat, device=s_hat.device)
+
+        loss = F.gaussian_nll_loss(s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars)
+
+        losses.append(loss.item())
+        loss.backward()
+        grad_norms.append(gradnorm(transition_model))
+        if max_norm:
+            clip_grad_norm_(transition_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(transition_model))
+        optimizer.step()
+
+        logvars_mu.append(s_hat_vars.log().mean().item())
+        logvars_std.append(s_hat_vars.log().std().item())
+        vars_mu.append(s_hat_vars.mean().item())
+        vars_std.append(s_hat_vars.std().item())
+
+        pbar.set_postfix_str(f'loss: {loss.item()}')
+
+    return {
+        'transition model loss': np.mean(losses),
+        'transition model grad norm': np.mean(grad_norms),
+        'transition model clipped grad norm': np.mean(clipped_grad_norms),
+        'transition model mean logvars mean': np.mean(logvars_mu),
+        'transition model mean logvars std': np.mean(logvars_std),
+        'transition model mean vars mean': np.mean(vars_mu),
+        'transition model mean vars std': np.mean(vars_std)
+    }
+
+
 def train_policynetPB(policy_model: Module, transition_model: Module, memory: ReplayMemory,
                       optimizer: torch.optim.Optimizer, batch_size: int, loss_gain: array,
                       warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20, beta: float = 0.0,

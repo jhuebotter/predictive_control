@@ -5,7 +5,7 @@ from pathlib import Path
 from src.utils import ReplayMemory, make_env, make_transition_model, make_policy_model, make_optimizer, save_checkpoint, \
     dict_mean, load_weights_from_disk, update_dict
 from src.training_functions import train_policynetPB, train_policynetPB_sample, train_transitionnetRNNPBNLL, \
-    train_transitionnetRNNPBNLL_sample, baseline_prediction
+    train_transitionnetRNNPBNLL_sample_unroll, baseline_prediction
 from src.plotting import render_video, animate_predictions
 from src.config import get_config, save_config
 from src.logger import PandasLogger
@@ -175,7 +175,7 @@ while step <= config['total_env_steps']:
     # update transition and policy models based on data in memory
     transition_learning_config = dict(**config['general'].get('learning', {}))
     transition_learning_config = update_dict(transition_learning_config, config['transition'].get('learning', {}))
-    transition_results = train_transitionnetRNNPBNLL_sample(transitionnet, memory, opt_trans, **transition_learning_config['params'])
+    transition_results = train_transitionnetRNNPBNLL_sample_unroll(transitionnet, memory, opt_trans, **transition_learning_config['params'])
     transitionnet_updates += transition_learning_config['params']['n_batches']
 
     policy_learning_config = dict(**config['general'].get('learning', {}))

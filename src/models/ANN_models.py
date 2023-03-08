@@ -403,7 +403,7 @@ class PolicyNetPBAdaptive(AdaptiveModel):
         self.act_func = act_func
         self.reset_adaptation_weights()
         init.zeros_(self.basis.fc_mu.bias)
-        init.ones_(self.basis.fc_var.bias)
+        init.zeros_(self.basis.fc_var.bias)
 
 
     def forward(self, state: Tensor, target: Tensor) -> (Tensor, Tensor):
@@ -416,8 +416,8 @@ class PolicyNetPBAdaptive(AdaptiveModel):
 
         x = self.basis['fc1'](torch.cat((state, target), -1))
         x = self.act_func(x)
-        mu = self.basis['fc_mu'](x) + self.adaptive_layers['fc_mu_adapt'](x)
-        logvar = self.basis['fc_var'](x) + self.adaptive_layers['fc_var_adapt'](x)
+        mu = self.basis['fc_mu'](x)  # + self.adaptive_layers['fc_mu_adapt'](x)
+        logvar = self.basis['fc_var'](x)  # + self.adaptive_layers['fc_var_adapt'](x)
 
         return torch.tanh(mu), logvar
 
@@ -451,7 +451,7 @@ class TransitionNetGRUPBAdaptive(AdaptiveModel):
         self.bias = bias
         self.reset_adaptation_weights()
         init.zeros_(self.basis.fc_mu.bias)
-        init.ones_(self.basis.fc_var.bias)
+        init.zeros_(self.basis.fc_var.bias)
 
 
     def forward(self, state: Tensor, action: Tensor) -> (Tensor, Tensor):
@@ -464,8 +464,8 @@ class TransitionNetGRUPBAdaptive(AdaptiveModel):
 
         x, self.h = self.basis['gru1'](torch.cat((state, action), -1), self.h)
         x = self.act_func(x)
-        mu = self.basis['fc_mu'](x) + self.adaptive_layers['fc_mu_adapt'](x)
-        logvar = self.basis['fc_var'](x) + self.adaptive_layers['fc_var_adapt'](x)
+        mu = self.basis['fc_mu'](x)  # + self.adaptive_layers['fc_mu_adapt'](x)
+        logvar = self.basis['fc_var'](x)  # + self.adaptive_layers['fc_var_adapt'](x)
 
         return mu, logvar
 

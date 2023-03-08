@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import numpy as np
-from .utils import ReplayMemory, gradnorm
+from .utils import ReplayMemory, gradnorm, reparameterize as rp
 from tqdm import tqdm
 from .extratyping import *
 
@@ -187,8 +187,7 @@ def train_transitionnetRNNPBNLL_sample_unroll(transition_model: Module, memory: 
         # reset and warm up
         transition_model.reset_state()
         s_hat_delta_mu, s_hat_delta_logvar = transition_model(state_batch[:warmup_steps], action_batch[:warmup_steps])
-        s_hat_delta_std = torch.exp(0.5 * s_hat_delta_logvar)
-        s_hat = state_batch[warmup_steps-1] + s_hat_delta_mu[-1] + s_hat_delta_std[-1] * torch.randn_like(s_hat_delta_std[-1], device=device)
+        s_hat = state_batch[warmup_steps]
 
         s_hat_mus = torch.empty((unroll_steps, batch_size, state_dim), device=device)
         s_hat_vars = torch.empty((unroll_steps, batch_size, state_dim), device=device)
@@ -197,7 +196,7 @@ def train_transitionnetRNNPBNLL_sample_unroll(transition_model: Module, memory: 
             s_hat_delta_mu, s_hat_delta_logvar = transition_model(s_hat, action_batch[warmup_steps+k])
             s_hat_mus[k] = s_hat + s_hat_delta_mu
             s_hat_vars[k] = torch.exp(s_hat_delta_logvar)
-            s_hat = s_hat + s_hat_delta_mu + torch.exp(0.5 * s_hat_delta_logvar) * torch.randn_like(s_hat, device=device)
+            s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
 
         loss = F.gaussian_nll_loss(s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars)
 

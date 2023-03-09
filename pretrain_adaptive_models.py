@@ -161,6 +161,7 @@ while step <= config['total_env_steps']:
             episode_count += 1
 
             # compute prediction performance against baseline
+            # TODO: NEEDS WARMUP LENGTH PASSED
             baseline_predictions.append(baseline_prediction(transitionnet, episode))
 
     baseline_results = dict_mean(baseline_predictions)

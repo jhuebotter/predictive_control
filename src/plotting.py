@@ -121,8 +121,8 @@ def create_episode(env, transitionnet, policynet, steps: int = 100):
 
     return episode
 
-
-def make_predictions(episode: list, transitionnet: Module, h: int = 100, deterministic: bool = True) -> Tensor:\
+@torch.no_grad()
+def make_predictions_old(episode: list, transitionnet: Module, h: int = 100, deterministic: bool = True) -> Tensor:\
 
     n = len(episode)
     observations = torch.stack([step[0] for step in episode]).unsqueeze(0).transpose(0, 1)
@@ -162,18 +162,48 @@ def make_predictions(episode: list, transitionnet: Module, h: int = 100, determi
     return predictions
 
 @torch.no_grad()
-def animate_predictions(episode: list, transitionnet: Module, labels: list, h: int = 100, fps: float = 20.,
+def make_predictions(episode: list, transitionnet: Module, unroll: int = 100, warmup: int = 1,
+                         deterministic: bool = True) -> Tensor:
+
+    assert warmup >= 1
+
+    T = len(episode)
+    observations = torch.stack([step[0] for step in episode]).unsqueeze(0).transpose(0, 1)
+    actions = torch.stack([step[2] for step in episode]).unsqueeze(0).transpose(0, 1)
+    D = observations.shape[-1]
+    predictions = torch.zeros((T, unroll, D))
+
+    for t in range(T):
+        transitionnet.reset_state()
+
+        for j in range(unroll):
+            if t+j >= T:
+                break
+
+            if j < warmup:
+                state = observations[t+j]
+            else:
+                state = state_pred
+
+            delta_pred = transitionnet.predict(state, actions[t+j], deterministic)
+            state_pred = state_pred + delta_pred
+            predictions[t, j] = state_pred
+
+    return predictions
+
+@torch.no_grad()
+def animate_predictions(episode: list, transitionnet: Module, labels: list, unroll: int = 100, warmup: int = 1, fps: float = 20.,
                         save: Optional[Union[Path, str]] = './animation.mp4', deterministic: bool = True, dpi: int = 50,
                         font_size: int = 12) -> object:
     plt.rcParams['font.size'] = f'{font_size}'
 
-    predictions = make_predictions(episode, transitionnet, h, deterministic=deterministic)
+    predictions = make_predictions(episode, transitionnet, unroll, warmup, deterministic=deterministic)
     predictions = predictions.detach().cpu().numpy()
     next_observations = [step[4].squeeze().cpu().numpy() for step in episode]
 
-    n, h, d = predictions.shape
+    T, h, D = predictions.shape
 
-    fig, ax = plt.subplots(d, figsize=(5, d), sharex=True, sharey=True, dpi=dpi)
+    fig, ax = plt.subplots(D, figsize=(5, D), sharex=True, sharey=True, dpi=dpi)
     plt.ylim(-1.1, 1.1)
 
     cmap = plt.get_cmap('plasma')
@@ -181,21 +211,22 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, h: i
     camera = Camera(fig)
 
     # make an initial snapshot without prediction
-    for i in range(d):
-        ax[i].plot([o[i] for o in next_observations], c='g', alpha=0.5)
-        ax[i].set_ylabel(labels[i])
+    for d in range(D):
+        ax[d].plot([o[d] for o in next_observations], c='g', alpha=0.5)
+        ax[d].set_ylabel(labels[d])
     ax[-1].set_xlabel('step')
     plt.tight_layout()
 
     camera.snap()
+    idx = np.arange(0., 1., 1. / (h - warmup))
 
     # animate the prediction
-    for t in np.arange(0, n):
-        for i in range(d):
-            max_ = np.min([h, n - t])
-            idx = np.arange(0., 1., 1. / (h))
-            ax[i].scatter(np.arange(t, np.min([t + h, n])), predictions[t, :max_, i], c=cmap(idx[:max_]), s=4)
-            ax[i].plot([o[i] for o in next_observations], c='g', alpha=0.5)
+    for t in np.arange(T):
+        for d in range(D):
+            max_ = np.min([h, T - t])
+            ax[d].scatter(np.arange(t, np.min([t + warmup, T])), predictions[t, :warmup, d], c=cmap(idx[0]), s=4)
+            ax[d].scatter(np.arange(t + warmup, np.min([t + h, T])), predictions[t, warmup:max_, d], c=cmap(idx[:max_]), s=4)
+            ax[d].plot([o[d] for o in next_observations], c='g', alpha=0.5)
 
         plt.tight_layout()
         camera.snap()

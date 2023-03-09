@@ -56,7 +56,7 @@ evaluate: True
 evaluate_every_n_iterations: 25
 
 # plotting parameters
-animate: False
+animate: True
 record_every_n_iterations: 50
 record_first_n_episodes: 5
 

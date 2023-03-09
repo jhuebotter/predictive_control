@@ -189,15 +189,18 @@ def train_transitionnetRNNPBNLL_sample_unroll(transition_model: Module, memory: 
         s_hat_delta_mu, s_hat_delta_logvar = transition_model(state_batch[:warmup_steps], action_batch[:warmup_steps])
         s_hat = state_batch[warmup_steps]
 
+        # make a container for the predictions to go in
         s_hat_mus = torch.empty((unroll_steps, batch_size, state_dim), device=device)
         s_hat_vars = torch.empty((unroll_steps, batch_size, state_dim), device=device)
 
+        # autoregressive prediction
         for k in range(unroll_steps):
             s_hat_delta_mu, s_hat_delta_logvar = transition_model(s_hat, action_batch[warmup_steps+k])
             s_hat_mus[k] = s_hat + s_hat_delta_mu
             s_hat_vars[k] = torch.exp(s_hat_delta_logvar)
             s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
 
+        # compare predictions with ground truth
         loss = F.gaussian_nll_loss(s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars)
 
         losses.append(loss.item())
@@ -463,7 +466,7 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
     }
 
 @torch.no_grad()
-def baseline_prediction(transitionnet: Module, episode: list) -> dict:
+def baseline_prediction(transitionnet: Module, episode: list, warmup: int = 0) -> dict:
     """function used to evaluate transition network predictions against baseline values"""
 
     transitionnet.reset_state()
@@ -476,17 +479,17 @@ def baseline_prediction(transitionnet: Module, episode: list) -> dict:
     # predict next state based on action with transition net
     delta_states = transitionnet.predict(states, actions, deterministic=True)
     predicted_states = states + delta_states.detach()
-    predicted_state_mse = torch.pow(predicted_states - next_states, 2).mean()
+    predicted_state_mse = torch.pow(predicted_states[warmup:] - next_states[warmup:], 2).mean()
     #print("predicted state MSE:", predicted_state_mse.item())
 
     # use linear extrapolation as a baseline estimate
-    previous_deltas = states[1:] - states[:-1]
-    extrapolated_states = states[1:] + previous_deltas
-    extrapolated_state_mse = torch.pow(extrapolated_states - next_states[1:], 2).mean()
+    previous_deltas = states[1+warmup:] - states[warmup:-1]
+    extrapolated_states = states[1+warmup:] + previous_deltas
+    extrapolated_state_mse = torch.pow(extrapolated_states - next_states[1+warmup:], 2).mean()
     #print("extrapolated state MSE:", extrapolated_state_mse.item())
 
     # use current state as a second baseline estimate
-    current_state_mse = torch.pow(states - next_states, 2).mean()
+    current_state_mse = torch.pow(states[warmup:] - next_states[warmup:], 2).mean()
     #print("current state MSE:", current_state_mse.item())
 
     return {

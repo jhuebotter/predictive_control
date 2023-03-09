@@ -49,21 +49,19 @@ loss_gain = env.loss_gain
 memory = ReplayMemory(config['memory_size'])
 
 # initialize the models
-transition_model_config = copy.deepcopy(config['general']).get('model', {})
-transition_model_config = update_dict(transition_model_config, config['transition'].get('model', {}))
-policy_model_config = copy.deepcopy(config['general']).get('model', {})
-policy_model_config = update_dict(policy_model_config, config['policy'].get('model', {}))
+transition_config = update_dict(copy.deepcopy(config.get('general', {})), config.get('transition', {}))
+policy_config = update_dict(copy.deepcopy(config.get('general', {})), config.get('policy', {}))
+transitionnet = make_transition_model(env, transition_config.get('model', {})).to(device)
+policynet = make_policy_model(env, policy_config.get('model', {})).to(device)
 
-transitionnet = make_transition_model(env, transition_model_config).to(device)
-policynet = make_policy_model(env, policy_model_config).to(device)
 
 # initialize the optimizers
-transition_opt_config = copy.deepcopy(config['general']).get('optim', {})
-transition_opt_config = update_dict(transition_opt_config, config['transition'].get('optim', {}))
-policy_opt_config = copy.deepcopy(config['general']).get('optim', {})
-policy_opt_config = update_dict(policy_opt_config, config['transition'].get('optim', {}))
-opt_trans = make_optimizer(transitionnet.basis, transition_opt_config)
-opt_policy = make_optimizer(policynet.basis, policy_opt_config)
+#transition_opt_config = copy.deepcopy(config['general']).get('optim', {})
+#transition_opt_config = update_dict(transition_opt_config, config['transition'].get('optim', {}))
+#policy_opt_config = copy.deepcopy(config['general']).get('optim', {})
+#policy_opt_config = update_dict(policy_opt_config, config['transition'].get('optim', {}))
+opt_trans = make_optimizer(transitionnet.basis, transition_config.get('optim', {}))
+opt_policy = make_optimizer(policynet.basis, policy_config.get('optim', {}))
 
 # load model and other things from checkpoint
 if args.load_dir:
@@ -161,8 +159,11 @@ while step <= config['total_env_steps']:
             episode_count += 1
 
             # compute prediction performance against baseline
-            # TODO: NEEDS WARMUP LENGTH PASSED
-            baseline_predictions.append(baseline_prediction(transitionnet, episode))
+            baseline_predictions.append(baseline_prediction(
+                transitionnet,
+                episode,
+                warmup=transition_config['learning']['params']['warmup_steps']
+            ))
 
     baseline_results = dict_mean(baseline_predictions)
     rewards = dict_mean(rewards)
@@ -170,22 +171,28 @@ while step <= config['total_env_steps']:
     # render video and save to disk
     if len(frames) and config['animate']:
         render_video(frames, env.metadata['render_fps'], save=Path(run_dir, f'episode_animation_{iteration}.mp4'))
-        animate_predictions(episode, transitionnet, env.state_labels, save=Path(run_dir, f'prediction_animation_{iteration}_{e}.mp4'))
+        animate_predictions(
+            episode,
+            transitionnet,
+            env.state_labels,
+            warmup=transition_config['learning']['params']['warmup_steps'],
+            save=Path(run_dir, f'prediction_animation_{iteration}_{e}.mp4')
+        )
         wandb.log({f'episode animation': wandb.Video(str(Path(run_dir, f'episode_animation_{iteration}.mp4'))),
                    f'prediction animation': wandb.Video(str(Path(run_dir, f'prediction_animation_{iteration}_{e}.mp4')))},
                   step=iteration)
 
     # update transition and policy models based on data in memory
-    transition_learning_config = copy.deepcopy(config['general']).get('learning', {})
-    transition_learning_config = update_dict(transition_learning_config, config['transition'].get('learning', {}))
-    transition_results = train_transitionnetRNNPBNLL_sample_unroll(transitionnet, memory, opt_trans, **transition_learning_config['params'])
-    transitionnet_updates += transition_learning_config['params']['n_batches']
+    #transition_learning_config = copy.deepcopy(config['general']).get('learning', {})
+    #transition_learning_config = update_dict(transition_learning_config, config['transition'].get('learning', {}))
+    transition_results = train_transitionnetRNNPBNLL_sample_unroll(transitionnet, memory, opt_trans, **transition_config['learning']['params'])
+    transitionnet_updates += transition_config['learning']['params']['n_batches']
 
-    policy_learning_config = copy.deepcopy(config['general']).get('learning', {})
-    policy_learning_config = update_dict(policy_learning_config, config['policy'].get('learning', {}))
+    #policy_learning_config = copy.deepcopy(config['general']).get('learning', {})
+    #policy_learning_config = update_dict(policy_learning_config, config['policy'].get('learning', {}))
     policy_results = train_policynetPB_sample(policynet, transitionnet, memory, opt_policy,
-                                       loss_gain=env.loss_gain, **policy_learning_config['params'])
-    policynet_updates += policy_learning_config['params']['n_batches']
+                                       loss_gain=env.loss_gain, **policy_config['learning']['params'])
+    policynet_updates += policy_config['learning']['params']['n_batches']
 
     # log the iteration results
     data = {'environment step': step, 'episode': episode_count, 'iteration': iteration,
@@ -197,8 +204,16 @@ while step <= config['total_env_steps']:
         record = False
         if (iteration % config['record_every_n_iterations'] == 0 or iteration == 1) and config['animate']:
             record = True
-        eval_results = evalue_adaptive_models(policynet, transitionnet, config['task'], record=record,
-                                              device=device, step=iteration, run_dir=run_dir)
+        eval_results = evalue_adaptive_models(
+            policynet,
+            transitionnet,
+            config['task'],
+            record=record,
+            device=device,
+            step=iteration,
+            run_dir=run_dir,
+            warmup=transition_config['learning']['params']['warmup_steps']
+        )
         iteration_results.update(eval_results)
 
     # save stuff to .csv

@@ -106,12 +106,12 @@ def create_episode(env, transitionnet, policynet, steps: int = 100):
         if len(action.shape) == 3:
             action.squeeze_(0)
         a = action[0].detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
-        next_observation, target, done, info = env.step(a)
+        next_observation, target, done, reward, info = env.step(a)
         next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32).unsqueeze(0)
         target = torch.tensor(target, device=device, dtype=torch.float32).unsqueeze(0)
 
         # save transition for later
-        transition = (observation[0], target, action.detach()[0], next_observation[0])
+        transition = (observation[0], target, action.detach()[0], reward, next_observation[0])
         episode.append(transition)
 
         # advance to next step
@@ -186,7 +186,7 @@ def make_predictions(episode: list, transitionnet: Module, unroll: int = 100, wa
                 state = state_pred
 
             delta_pred = transitionnet.predict(state, actions[t+j], deterministic)
-            state_pred = state_pred + delta_pred
+            state_pred = state + delta_pred
             predictions[t, j] = state_pred
 
     return predictions
@@ -218,14 +218,15 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, unro
     plt.tight_layout()
 
     camera.snap()
-    idx = np.arange(0., 1., 1. / (h - warmup))
+    idx = np.arange(0., 1., 1. / (h))
 
     # animate the prediction
     for t in np.arange(T):
         for d in range(D):
             max_ = np.min([h, T - t])
-            ax[d].scatter(np.arange(t, np.min([t + warmup, T])), predictions[t, :warmup, d], c=cmap(idx[0]), s=4)
-            ax[d].scatter(np.arange(t + warmup, np.min([t + h, T])), predictions[t, warmup:max_, d], c=cmap(idx[:max_]), s=4)
+            ax[d].scatter(np.arange(t, np.min([t + warmup, T])), predictions[t, :np.min([warmup, T - t]), d], c='k', s=4)
+            if T - t > warmup:
+                ax[d].scatter(np.arange(t + warmup, np.min([t + h, T])), predictions[t, warmup:max_, d], c=cmap(idx[:max_-warmup]), s=4)
             ax[d].plot([o[d] for o in next_observations], c='g', alpha=0.5)
 
         plt.tight_layout()

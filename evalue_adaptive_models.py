@@ -81,7 +81,7 @@ def make_eval_tasks(task_config: dict) -> (list, list, object):
 
 
 def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config: dict, record: bool = True,
-                           device: str = 'cpu', step: int = 0, run_dir: str = 'results') -> dict:
+                           device: str = 'cpu', step: int = 0, warmup: int = 0, run_dir: str = 'results') -> dict:
 
     frames = []
     baseline_predictions = []
@@ -135,7 +135,11 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
         rewards.append({'mean episode reward eval': total_reward})
         # compute prediction performance against baseline
         # TODO: NEEDS WARMUP WINDOW PASSED!
-        baseline_predictions.append(baseline_prediction(transitionnet, episode))
+        baseline_predictions.append(baseline_prediction(
+            transitionnet,
+            episode,
+            warmup=warmup
+        ))
         episodes.append(episode)
 
     baseline_results = dict_mean(baseline_predictions)

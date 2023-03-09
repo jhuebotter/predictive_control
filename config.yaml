@@ -27,7 +27,7 @@ general:
       n_batches: 30
       unroll_steps: 8
       warmup_steps: 8
-      max_norm: null
+      max_norm: 50
 
 # policy model parameters
 policy:

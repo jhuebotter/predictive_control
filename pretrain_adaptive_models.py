@@ -28,7 +28,6 @@ if args.load_dir:
     # config = get_config(Path(args.load_dir, 'config.yaml'))
     config = get_config(Path(args.load_dir, args.config))
 else:
-    #config = get_config()
     config = get_config(args.config)
 
 seed = config['seed']
@@ -56,10 +55,6 @@ policynet = make_policy_model(env, policy_config.get('model', {})).to(device)
 
 
 # initialize the optimizers
-#transition_opt_config = copy.deepcopy(config['general']).get('optim', {})
-#transition_opt_config = update_dict(transition_opt_config, config['transition'].get('optim', {}))
-#policy_opt_config = copy.deepcopy(config['general']).get('optim', {})
-#policy_opt_config = update_dict(policy_opt_config, config['transition'].get('optim', {}))
 opt_trans = make_optimizer(transitionnet.basis, transition_config.get('optim', {}))
 opt_policy = make_optimizer(policynet.basis, policy_config.get('optim', {}))
 
@@ -102,7 +97,6 @@ best_policy_loss = np.inf
 
 while step <= config['total_env_steps']:
     # record a bunch of episodes to memory
-
     print()
     print(f'beginning iteration {iteration}')
 
@@ -183,13 +177,9 @@ while step <= config['total_env_steps']:
                   step=iteration)
 
     # update transition and policy models based on data in memory
-    #transition_learning_config = copy.deepcopy(config['general']).get('learning', {})
-    #transition_learning_config = update_dict(transition_learning_config, config['transition'].get('learning', {}))
     transition_results = train_transitionnetRNNPBNLL_sample_unroll(transitionnet, memory, opt_trans, **transition_config['learning']['params'])
     transitionnet_updates += transition_config['learning']['params']['n_batches']
 
-    #policy_learning_config = copy.deepcopy(config['general']).get('learning', {})
-    #policy_learning_config = update_dict(policy_learning_config, config['policy'].get('learning', {}))
     policy_results = train_policynetPB_sample(policynet, transitionnet, memory, opt_policy,
                                        loss_gain=env.loss_gain, **policy_config['learning']['params'])
     policynet_updates += policy_config['learning']['params']['n_batches']

@@ -134,7 +134,6 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
 
         rewards.append({'mean episode reward eval': total_reward})
         # compute prediction performance against baseline
-        # TODO: NEEDS WARMUP WINDOW PASSED!
         baseline_predictions.append(baseline_prediction(
             transitionnet,
             episode,

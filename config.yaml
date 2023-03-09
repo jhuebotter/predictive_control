@@ -16,6 +16,7 @@ general:
     params:
       hidden_dim: 256
       act_func: lrelu
+      num_ff_layers: 0
   optim:
     type: adam
     params:

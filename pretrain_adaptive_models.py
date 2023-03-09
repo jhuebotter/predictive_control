@@ -13,6 +13,7 @@ from tqdm import tqdm
 import argparse
 import wandb
 from evalue_adaptive_models import evalue_adaptive_models
+import copy
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -48,17 +49,18 @@ loss_gain = env.loss_gain
 memory = ReplayMemory(config['memory_size'])
 
 # initialize the models
-transition_model_config = dict(**config['general'].get('model', {}))
+transition_model_config = copy.deepcopy(config['general']).get('model', {})
 transition_model_config = update_dict(transition_model_config, config['transition'].get('model', {}))
-policy_model_config = dict(**config['general'].get('model', {}))
+policy_model_config = copy.deepcopy(config['general']).get('model', {})
 policy_model_config = update_dict(policy_model_config, config['policy'].get('model', {}))
+
 transitionnet = make_transition_model(env, transition_model_config).to(device)
 policynet = make_policy_model(env, policy_model_config).to(device)
 
 # initialize the optimizers
-transition_opt_config = dict(**config['general'].get('optim', {}))
+transition_opt_config = copy.deepcopy(config['general']).get('optim', {})
 transition_opt_config = update_dict(transition_opt_config, config['transition'].get('optim', {}))
-policy_opt_config = dict(**config['general'].get('optim', {}))
+policy_opt_config = copy.deepcopy(config['general']).get('optim', {})
 policy_opt_config = update_dict(policy_opt_config, config['transition'].get('optim', {}))
 opt_trans = make_optimizer(transitionnet.basis, transition_opt_config)
 opt_policy = make_optimizer(policynet.basis, policy_opt_config)
@@ -173,12 +175,12 @@ while step <= config['total_env_steps']:
                   step=iteration)
 
     # update transition and policy models based on data in memory
-    transition_learning_config = dict(**config['general'].get('learning', {}))
+    transition_learning_config = copy.deepcopy(config['general']).get('learning', {})
     transition_learning_config = update_dict(transition_learning_config, config['transition'].get('learning', {}))
     transition_results = train_transitionnetRNNPBNLL_sample_unroll(transitionnet, memory, opt_trans, **transition_learning_config['params'])
     transitionnet_updates += transition_learning_config['params']['n_batches']
 
-    policy_learning_config = dict(**config['general'].get('learning', {}))
+    policy_learning_config = copy.deepcopy(config['general']).get('learning', {})
     policy_learning_config = update_dict(policy_learning_config, config['policy'].get('learning', {}))
     policy_results = train_policynetPB_sample(policynet, transitionnet, memory, opt_policy,
                                        loss_gain=env.loss_gain, **policy_learning_config['params'])

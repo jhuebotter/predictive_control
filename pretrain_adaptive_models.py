@@ -21,7 +21,7 @@ torch.autograd.set_detect_anomaly(True)
 # read the directory to be loaded
 parser = argparse.ArgumentParser()
 parser.add_argument('--load_dir', help='directory with config file and model parameters', type=str, default='')
-parser.add_argument('--config', help='name of the config file', type=str, default='config_snn_pol.yaml')
+parser.add_argument('--config', help='name of the config file', type=str, default='config.yaml')
 args, left_argv = parser.parse_known_args()
 
 # read some parameters from a config file

@@ -15,7 +15,6 @@ general:
   model:
     params:
       hidden_dim: 256
-      act_func: lrelu
   optim:
     type: adam
     params:
@@ -33,6 +32,7 @@ policy:
   model:
     type: rnnPBadapt
     params:
+      act_func: lrelu
       num_rec_layers: 0
       num_ff_layers: 2
   learning:
@@ -45,6 +45,7 @@ transition:
   model:
     type: rnnPBadapt
     params:
+      act_func: lrelu
       num_rec_layers: 1
       num_ff_layers: 1
 

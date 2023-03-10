@@ -320,7 +320,8 @@ class Readout(Module):
 class TransitionNetRSNNPB(Module):
     def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_rec_layers: int = 1, num_ff_layers: int = 0,
                  bias: bool = True, repeat_input: int = 1, out_style: str = 'mean', dt: float = 1e-3, device=None,
-                 dtype=None, flif_kwargs: dict = {}, readout_kwargs: dict = {}) -> None:
+                 dtype=None, flif_kwargs: dict = {}, readout_kwargs: dict = {}, **kwargs) -> None:
+
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(TransitionNetRSNNPB, self).__init__()
 
@@ -412,8 +413,9 @@ class TransitionNetRSNNPB(Module):
 class PolicyNetRSNNPB(Module):
     def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_rec_layers: int = 0,
                  num_ff_layers: int = 1, bias: bool = True, repeat_input: int = 1, out_style: str = 'mean',
-                 dt: float = 1e-3, device=None,
-                 dtype=None, flif_kwargs: dict = {'recurrent': False}, readout_kwargs: dict = {}) -> None:
+                 dt: float = 1e-3, device=None, dtype=None, flif_kwargs: dict = {}, readout_kwargs: dict = {},
+                 **kwargs) -> None:
+
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(PolicyNetRSNNPB, self).__init__()
         self.action_dim = action_dim

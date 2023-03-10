@@ -1,6 +1,6 @@
 # general parameters
 seed: 42
-experiment: debug
+experiment: rework
 
 # task parameters
 task:
@@ -16,7 +16,6 @@ general:
     params:
       hidden_dim: 256
       act_func: lrelu
-      num_ff_layers: 0
   optim:
     type: adam
     params:
@@ -25,16 +24,17 @@ general:
     params:
       batch_size: 1_024
       n_batches: 30
-      unroll_steps: 8
+      unroll_steps: 10
       warmup_steps: 8
       max_norm: 50
 
 # policy model parameters
 policy:
   model:
-    type: MLPPBadapt
+    type: rnnPBadapt
     params:
-      num_ff_layers: 0
+      num_rec_layers: 0
+      num_ff_layers: 2
   learning:
     params:
       deterministic_transition: False
@@ -43,20 +43,20 @@ policy:
 # transition model parameters
 transition:
   model:
-    type: GRUPBadapt
+    type: rnnPBadapt
     params:
       num_rec_layers: 1
-      num_ff_layers: 0
+      num_ff_layers: 1
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 2_000
+total_env_steps: 4_000
 episodes_per_iteration: 10
 evaluate: True
-evaluate_every_n_iterations: 25
+evaluate_every_n_iterations: 10
 
 # plotting parameters
-animate: True
+animate: False
 record_every_n_iterations: 50
 record_first_n_episodes: 5
 

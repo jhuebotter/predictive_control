@@ -19,11 +19,11 @@ general:
       out_style: last
       dt: 0.004
       flif_kwargs:
-        train_V_tau: False
-        train_I_tau: False
+        train_V_tau: True
+        train_I_tau: True
       readout_kwargs:
-        train_V_tau: False
-        train_I_tau: False
+        train_V_tau: True
+        train_I_tau: True
   optim:
     type: adam
     params:
@@ -32,33 +32,36 @@ general:
     params:
       batch_size: 1_024
       n_batches: 30
-      unroll_steps: 8
+      unroll_steps: 10
       warmup_steps: 8
-      max_norm: 10.0
+      max_norm: 50
 
 # policy model parameters
 policy:
   model:
-    type: FFSNNPB
+    type: RSNNPB
     params:
-      flif_kwargs:
-        recurrent: False
+      num_rec_layers: 0
+      num_ff_layers: 2
   learning:
     params:
-      beta: 0.0
       deterministic_transition: False
+      beta: 0.0
 
 # transition model parameters
 transition:
   model:
     type: RSNNPB
+    params:
+      num_rec_layers: 1
+      num_ff_layers: 1
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 2_000
+total_env_steps: 4_000
 episodes_per_iteration: 10
 evaluate: True
-evaluate_every_n_iterations: 25
+evaluate_every_n_iterations: 10
 
 # plotting parameters
 animate: False

@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -189,8 +191,12 @@ class FLIF_B(Module):
             self.init_state(inpt.shape[0])
 
         # calculate decay variables
-        alpha = torch.clip(torch.exp(-self.dt / self.I_tau), 0., 1.)
-        beta = torch.clip(torch.exp(-self.dt / self.V_tau), 0., 1.)
+        alpha = torch.exp(-self.dt / self.I_tau)
+        beta = torch.exp(-self.dt / self.V_tau)
+        # VERY EXPERIMENTAL!!!
+        with torch.no_grad():
+            alpha = torch.clip(alpha, 0., 1.)
+            beta = torch.clip(beta, 0., 1.)
 
         # integrate new input
         I_in = F.dropout(self.input_con(inpt), self.input_dropout, True, False)
@@ -296,8 +302,12 @@ class Readout(Module):
         # integrate new input
         I_in = F.dropout(self.input_con(inpt), self.input_dropout, True, False)
 
-        alpha = torch.clip(torch.exp(-self.dt / self.I_tau), 0., 1.)
-        beta = torch.clip(torch.exp(-self.dt / self.V_tau), 0., 1.)
+        alpha = torch.exp(-self.dt / self.I_tau)
+        beta = torch.exp(-self.dt / self.V_tau)
+        # VERY EXPERIMENTAL!!!
+        with torch.no_grad():
+            alpha = torch.clip(alpha, 0., 1.)
+            beta = torch.clip(beta, 0., 1.)
 
         self.I_t = alpha * self.I_t + I_in
         if self.bias is not None:
@@ -308,16 +318,27 @@ class Readout(Module):
 
 
 class TransitionNetRSNNPB(Module):
-    def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_layers: int = 1,
+    def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_rec_layers: int = 1, num_ff_layers: int = 0,
                  bias: bool = True, repeat_input: int = 1, out_style: str = 'mean', dt: float = 1e-3, device=None,
                  dtype=None, flif_kwargs: dict = {}, readout_kwargs: dict = {}) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(TransitionNetRSNNPB, self).__init__()
 
+        # gather layer parameters
+        rec_flif_kwargs = copy.deepcopy(flif_kwargs)
+        rec_flif_kwargs['recurrent'] = True
+        ff_flif_kwargs = copy.deepcopy(flif_kwargs)
+        ff_flif_kwargs['recurrent'] = False
+        in_dim = state_dim + action_dim
+
+        # make layers
         layers = OrderedDict()
-        layers['lif1'] = FLIF_B(state_dim + action_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
-        for i in range(num_layers - 1):
-            layers[f'lif{2+i}'] = FLIF_B(hidden_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
+        for i in range(num_rec_layers):
+            dim = in_dim if i == 0 else hidden_dim
+            layers[f'lif_rec{i+1}'] = FLIF_B(dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **rec_flif_kwargs)
+        for i in range(num_ff_layers):
+            dim = in_dim if (i == 0 and num_rec_layers == 0) else hidden_dim
+            layers[f'lif_ff{i+1}'] = FLIF_B(dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **ff_flif_kwargs)
         layers['mu'] = Readout(hidden_dim, state_dim, dt=dt, **factory_kwargs, **readout_kwargs)
         layers['logvar'] = Readout(hidden_dim, state_dim, dt=dt, **factory_kwargs, **readout_kwargs)
 
@@ -346,9 +367,6 @@ class TransitionNetRSNNPB(Module):
 
     def forward(self, state: Tensor, action: Tensor) -> [Tensor, Tensor]:
 
-        #print('transition')
-        #print('state shape b', state.shape)
-        #print('action shape b', action.shape)
         if len(state.shape) == 2:
             state.unsqueeze_(0)
 
@@ -358,8 +376,6 @@ class TransitionNetRSNNPB(Module):
         T = state.shape[0]
         N = state.shape[1]
         D = state.shape[2]
-        #print('state shape', state.shape)
-        #print('action shape', action.shape)
 
         if not self.state_initialized:
             self.init_state(N)
@@ -393,21 +409,32 @@ class TransitionNetRSNNPB(Module):
             return rp(mu, logvar)
 
 
-class PolicyNetFFSNNPB(Module):
-    def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_layers: int = 1,
-                 bias: bool = True, repeat_input: int = 1, out_style: str = 'mean', dt: float = 1e-3, device=None,
+class PolicyNetRSNNPB(Module):
+    def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_rec_layers: int = 0,
+                 num_ff_layers: int = 1, bias: bool = True, repeat_input: int = 1, out_style: str = 'mean',
+                 dt: float = 1e-3, device=None,
                  dtype=None, flif_kwargs: dict = {'recurrent': False}, readout_kwargs: dict = {}) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
-        super(PolicyNetFFSNNPB, self).__init__()
+        super(PolicyNetRSNNPB, self).__init__()
         self.action_dim = action_dim
 
+        # gather layer parameters
+        rec_flif_kwargs = copy.deepcopy(flif_kwargs)
+        rec_flif_kwargs['recurrent'] = True
+        ff_flif_kwargs = copy.deepcopy(flif_kwargs)
+        ff_flif_kwargs['recurrent'] = False
+        in_dim = state_dim + target_dim
+
+        # make layers
         layers = OrderedDict()
-        layers['lif1'] = FLIF_B(state_dim + target_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
-        for i in range(num_layers - 1):
-            layers[f'lif{2+i}'] = FLIF_B(hidden_dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **flif_kwargs)
+        for i in range(num_rec_layers):
+            dim = in_dim if i == 0 else hidden_dim
+            layers[f'lif_rec{i + 1}'] = FLIF_B(dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **rec_flif_kwargs)
+        for i in range(num_ff_layers):
+            dim = in_dim if (i == 0 and num_rec_layers == 0) else hidden_dim
+            layers[f'lif_ff{i + 1}'] = FLIF_B(dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **ff_flif_kwargs)
         layers['mu'] = Readout(hidden_dim, action_dim, dt=dt, **factory_kwargs, **readout_kwargs)
         layers['logvar'] = Readout(hidden_dim, action_dim, dt=dt, **factory_kwargs, **readout_kwargs)
-
         self.basis = nn.ModuleDict(layers)
 
         self.state_initialized = False
@@ -433,17 +460,11 @@ class PolicyNetFFSNNPB(Module):
 
     def forward(self, state: Tensor, target: Tensor) -> [Tensor, Tensor]:
 
-        #print('policy')
-        #print('state shape b', state.shape, len(state.shape), len(state.shape)==2)
-        #print('target shape b', target.shape, len(target.shape), len(target.shape)==2)
         if len(state.shape) == 2:
             state.unsqueeze_(0)
 
         if len(target.shape) == 2:
             target.unsqueeze_(0)
-
-        #print('state shape', state.shape)
-        #print('target shape', target.shape)
 
         T = state.shape[0]
         N = state.shape[1]

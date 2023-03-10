@@ -112,6 +112,23 @@ def make_env(config: dict, seed: int = 0) -> gym.Env:
     return env
 
 
+def make_act_func(params: dict) -> dict:
+    if 'act_func' in params.keys():
+        af = params['act_func']
+        if af == 'relu':
+            params['act_func'] = F.relu
+        elif af == 'lrelu':
+            params['act_func'] = F.leaky_relu
+        elif af == 'sigmoid':
+            params['act_func'] = torch.sigmoid
+        elif af == 'tanh':
+            params['act_func'] = F.tanh
+        else:
+            raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+
+    return params
+
+
 def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> Module:
     """create a policy network according to the parameters specified by the config file and task"""
 
@@ -120,42 +137,16 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
 
     type_ = config['type'].lower()
     params = dict(**config['params'])
-    if type_ == 'mlp':
-        from src.models.ANN_models import TransitionNet
-        model = TransitionNet
-    elif type_ == 'gru':
-        from src.models.ANN_models import TransitionNetGRU
-        model = TransitionNetGRU
-    elif type_ == 'lrnn':
-        from src.models.ANN_models import TransitionNetLRNN
-        model = TransitionNetLRNN
-    elif type_ == 'mlppb':
-        from src.models.ANN_models import TransitionNetPB
-        model = TransitionNetPB
-    elif type_ == 'grupb':
-        from src.models.ANN_models import TransitionNetGRUPB
-        model = TransitionNetGRUPB
-    elif type_ == 'lrnnpb':
-        from src.models.ANN_models import TransitionNetLRNNPB
-        model = TransitionNetLRNNPB
-    elif type_ == 'grupbadapt':
-        from src.models.ANN_models import TransitionNetGRUPBAdaptive
-        model = TransitionNetGRUPBAdaptive
+    if type_ == 'rnnpbadapt':
+        from src.models.ANN_models import TransitionNetPBAdaptive
+        model = TransitionNetPBAdaptive
     elif type_ == 'rsnnpb':
         from src.models.SNN_models import TransitionNetRSNNPB
         model = TransitionNetRSNNPB
     else:
         raise NotImplementedError(f"the transition model {type_} is not implemented")
 
-    if 'act_func' in params.keys():
-        if params['act_func'] == 'relu':
-            params['act_func'] = F.relu
-        elif params['act_func'] == 'lrelu':
-            params['act_func'] = F.leaky_relu
-        elif params['act_func'] == 'sigmoid':
-            params['act_func'] = torch.sigmoid
-        else:
-            raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+    params = make_act_func(params)
 
     transitionnet = model(
         action_dim=action_dim,
@@ -166,7 +157,6 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
 
     return transitionnet
 
-
 def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Module:
     """create a policy network according to the parameters specified by the config file and task"""
     
@@ -175,42 +165,16 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
 
     type_ = config['type'].lower()
     params = dict(**config['params'])
-    if type_ == 'mlp':
-        from src.models.ANN_models import PolicyNet
-        model = PolicyNet
-    elif type_ == 'gru':
-        from src.models.ANN_models import PolicyNetGRU
-        model = PolicyNetGRU
-    elif type_ == 'lrnn':
-        from src.models.ANN_models import PolicyNetLRNN
-        model = PolicyNetLRNN
-    elif type_ == 'mlppb':
-        from src.models.ANN_models import PolicyNetPB
-        model = PolicyNetPB
-    elif type_ == 'mlppbadapt':
+    if type_ == 'rnnpbadapt':
         from src.models.ANN_models import PolicyNetPBAdaptive
         model = PolicyNetPBAdaptive
-    elif type_ == 'grupb':
-        from src.models.ANN_models import PolicyNetGRUPB
-        model = PolicyNetGRUPB
-    elif type_ == 'lrnnpb':
-        from src.models.ANN_models import PolicyNetLRNNPB
-        model = PolicyNetLRNNPB
-    elif type_ == 'ffsnnpb':
-        from src.models.SNN_models import PolicyNetFFSNNPB
-        model = PolicyNetFFSNNPB
+    elif type_ == 'rsnnpb':
+        from src.models.SNN_models import PolicyNetRSNNPB
+        model = PolicyNetRSNNPB
     else:
         raise NotImplementedError(f"the policy model {type_} is not implemented")
 
-    if 'act_func' in params.keys():
-        if params['act_func'] == 'relu':
-            params['act_func'] = F.relu
-        elif params['act_func'] == 'lrelu':
-            params['act_func'] = F.leaky_relu
-        elif params['act_func'] == 'sigmoid':
-            params['act_func'] = torch.sigmoid
-        else:
-            raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+    params = make_act_func(params)
 
     policynet = model(
         action_dim=action_dim,

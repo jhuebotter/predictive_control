@@ -14,18 +14,18 @@ import argparse
 import wandb
 from evalue_adaptive_models import evalue_adaptive_models
 import copy
+import time
 
 torch.autograd.set_detect_anomaly(True)
 
 # read the directory to be loaded
 parser = argparse.ArgumentParser()
 parser.add_argument('--load_dir', help='directory with config file and model parameters', type=str, default='')
-parser.add_argument('--config', help='name of the config file', type=str, default='config.yaml')
+parser.add_argument('--config', help='name of the config file', type=str, default='config_snn_pol.yaml')
 args, left_argv = parser.parse_known_args()
 
 # read some parameters from a config file
 if args.load_dir:
-    # config = get_config(Path(args.load_dir, 'config.yaml'))
     config = get_config(Path(args.load_dir, args.config))
 else:
     config = get_config(args.config)
@@ -53,7 +53,6 @@ policy_config = update_dict(copy.deepcopy(config.get('general', {})), config.get
 transitionnet = make_transition_model(env, transition_config.get('model', {})).to(device)
 policynet = make_policy_model(env, policy_config.get('model', {})).to(device)
 
-
 # initialize the optimizers
 opt_trans = make_optimizer(transitionnet.basis, transition_config.get('optim', {}))
 opt_policy = make_optimizer(policynet.basis, policy_config.get('optim', {}))
@@ -69,10 +68,11 @@ if args.load_dir:
         pg.update(config['policy']['optim']['params'])
 
 # make directory to save model and plots
-run_id = datetime.now().strftime('%Y%m%d%H%M%S')
+run_id = datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')
 run_dir = Path('results', config['experiment'], config['task']['type'],
                f"tra{config['transition']['model']['type']}_pol{config['policy']['model']['type']}", run_id)
 run_dir.mkdir(parents=True)
+
 wandb.init(config=config, project=config['project'], entity=config['entity'], dir='./results')
 print(wandb.run.dir)
 wandb.watch([transitionnet, policynet], log='all')

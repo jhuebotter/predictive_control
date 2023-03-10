@@ -185,11 +185,6 @@ def make_predictions(episode: list, transitionnet: Module, unroll: int = 100, wa
             else:
                 state = state_pred
 
-            print(t, j)
-            print('state', state.shape)
-            print('action', actions[t+j].shape)
-
-
             delta_pred = transitionnet.predict(state, actions[t+j], deterministic)
             state_pred = state + delta_pred
             predictions[t, j] = state_pred

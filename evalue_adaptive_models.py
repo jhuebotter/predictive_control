@@ -80,7 +80,7 @@ def make_eval_tasks(task_config: dict) -> (list, list, object):
     return states, targets, env
 
 
-def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config: dict, record: bool = True,
+def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config: dict, record: bool = True, unroll: int = 10,
                            device: str = 'cpu', step: int = 0, warmup: int = 0, run_dir: str = 'results') -> dict:
 
     frames = []
@@ -89,6 +89,9 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
     episodes = []
 
     states, targets, env = make_eval_tasks(task_config)
+
+    action_min = torch.tensor(env.action_space.low, device=device)
+    action_max = torch.tensor(env.action_space.high, device=device)
 
     for e in tqdm(range(1, len(states) + 1), desc=f"{'evaluating models':30}"):
         if record:
@@ -112,13 +115,13 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
 
             # chose action and advance simulation
             action = policynet.predict(observation.view((1, 1, -1)), target.view((1, 1, -1)), deterministic=True)
-            a = action.flatten().detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
-            next_observation, next_target, reward, done, info = env.step(a)
+            a = action.flatten().detach().clip(action_min, action_max)
+            next_observation, next_target, reward, done, info = env.step(a.cpu().numpy())
             next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32)
             next_target = torch.tensor(next_target, device=device, dtype=torch.float32)
 
             # save transition for later
-            transition = (observation.clone(), target.clone(), action.detach().clone(), reward, next_observation.clone())
+            transition = (observation.clone(), target.clone(), a.clone(), reward, next_observation.clone())
             episode.append(transition)
 
             if render_mode:
@@ -152,8 +155,12 @@ def evalue_adaptive_models(policynet: Module, transitionnet: Module, task_config
     if len(frames) and record:
         plot_trajectories(episodes, save=Path(run_dir, f'episode_trajectories_eval_{step}.png'))
         render_video(frames, env.metadata['render_fps'], save=Path(run_dir, f'episode_animation_eval_{step}.mp4'))
-        animate_predictions(episode, transitionnet, env.state_labels,
-                            save=Path(run_dir, f'prediction_animation_eval_{step}_{e}.mp4'))
+        animate_predictions(
+            episode,
+            transitionnet,
+            env.state_labels,
+            unroll=unroll,
+            save=Path(run_dir, f'prediction_animation_eval_{step}_{e}.mp4'))
         results.update({
             f'episode trajectories eval': wandb.Image(str(Path(run_dir, f'episode_trajectories_eval_{step}.png'))),
             f'episode animation eval': wandb.Video(str(Path(run_dir, f'episode_animation_eval_{step}.mp4'))),

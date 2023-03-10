@@ -65,6 +65,7 @@ evaluate_every_n_iterations: 10
 
 # plotting parameters
 animate: False
+animate_unroll: 30
 record_every_n_iterations: 50
 record_first_n_episodes: 5
 

@@ -21,7 +21,7 @@ torch.autograd.set_detect_anomaly(True)
 # read the directory to be loaded
 parser = argparse.ArgumentParser()
 parser.add_argument('--load_dir', help='directory with config file and model parameters', type=str, default='')
-parser.add_argument('--config', help='name of the config file', type=str, default='config.yaml')
+parser.add_argument('--config', help='name of the config file', type=str, default='config_snn_pol.yaml')
 args, left_argv = parser.parse_known_args()
 
 # read some parameters from a config file
@@ -95,6 +95,11 @@ iteration = 1
 best_transition_loss = np.inf
 best_policy_loss = np.inf
 
+unroll = config['animate_unroll']
+
+action_min = torch.tensor(env.action_space.low, device=device)
+action_max = torch.tensor(env.action_space.high, device=device)
+
 while step <= config['total_env_steps']:
     # record a bunch of episodes to memory
     print()
@@ -128,13 +133,13 @@ while step <= config['total_env_steps']:
 
                 # chose action and advance simulation
                 action = policynet.predict(observation.view(1, 1, -1), target.view(1, 1, -1)).flatten()
-                a = action.detach().cpu().numpy().clip(env.action_space.low, env.action_space.high)
-                next_observation, next_target, reward, done, info = env.step(a)
+                a = action.flatten().detach().clip(action_min, action_max)
+                next_observation, next_target, reward, done, info = env.step(a.cpu().numpy())
                 next_observation = torch.tensor(next_observation, device=device, dtype=torch.float32)
                 next_target = torch.tensor(next_target, device=device, dtype=torch.float32)
 
                 # save transition for later
-                transition = (observation.clone(), target.clone(), action.detach().clone(), reward, next_observation.clone())
+                transition = (observation.clone(), target.clone(), a.clone(), reward, next_observation.clone())
                 episode.append(transition)
 
                 if render_mode:
@@ -169,6 +174,7 @@ while step <= config['total_env_steps']:
             episode,
             transitionnet,
             env.state_labels,
+            unroll=unroll,
             warmup=transition_config['learning']['params']['warmup_steps'],
             save=Path(run_dir, f'prediction_animation_{iteration}_{e}.mp4')
         )
@@ -198,6 +204,7 @@ while step <= config['total_env_steps']:
             policynet,
             transitionnet,
             config['task'],
+            unroll=unroll,
             record=record,
             device=device,
             step=iteration,

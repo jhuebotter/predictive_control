@@ -171,12 +171,12 @@ def make_predictions(episode: list, transitionnet: Module, unroll: int = 100, wa
     observations = torch.stack([step[0] for step in episode]).unsqueeze(0).transpose(0, 1)
     actions = torch.stack([step[2] for step in episode]).unsqueeze(0).transpose(0, 1)
     D = observations.shape[-1]
-    predictions = torch.zeros((T, unroll, D))
+    predictions = torch.zeros((T, warmup + unroll, D))
 
     for t in range(T):
         transitionnet.reset_state()
 
-        for j in range(unroll):
+        for j in range(unroll + warmup):
             if t+j >= T:
                 break
 
@@ -184,6 +184,11 @@ def make_predictions(episode: list, transitionnet: Module, unroll: int = 100, wa
                 state = observations[t+j]
             else:
                 state = state_pred
+
+            print(t, j)
+            print('state', state.shape)
+            print('action', actions[t+j].shape)
+
 
             delta_pred = transitionnet.predict(state, actions[t+j], deterministic)
             state_pred = state + delta_pred

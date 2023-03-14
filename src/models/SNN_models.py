@@ -10,6 +10,7 @@ from typing import Callable, Iterable, Optional, Union
 from src.utils import reparameterize as rp
 from abc import ABC
 from collections import OrderedDict
+import snntorch as snn
 
 
 def sparsify_matrix(mat: Tensor, p: float = 1.0) -> Tensor:
@@ -150,7 +151,7 @@ class FLIF_B(Module):
         init.kaiming_normal_(self.input_con.weight)         # adapt ?
         if self.input_density < 1.:
             self.input_con.weight.data = sparsify_matrix(self.input_con.weight.data, self.input_density)   # TODO: make this a hyperparamter
-        self.input_con.weight.data *= 0.05
+        #self.input_con.weight.data *= 0.05
         if self.recurrent:
             init.orthogonal_(self.recurrent_con.weight)     # adapt ?
             if self.recurrent_density < 1.:
@@ -305,9 +306,11 @@ class Readout(Module):
         alpha = torch.exp(-self.dt / self.I_tau)
         beta = torch.exp(-self.dt / self.V_tau)
         # VERY EXPERIMENTAL!!!
-        with torch.no_grad():
-            alpha = torch.clip(alpha, 0., 1.)
-            beta = torch.clip(beta, 0., 1.)
+        #with torch.no_grad():
+        #    alpha = torch.clip(alpha, 0., 1.)
+        #    beta = torch.clip(beta, 0., 1.)
+        alpha = torch.clip(alpha, 0., 1.)
+        beta = torch.clip(beta, 0., 1.)
 
         self.I_t = alpha * self.I_t + I_in
         if self.bias is not None:
@@ -412,7 +415,7 @@ class TransitionNetRSNNPB(Module):
 
 class PolicyNetRSNNPB(Module):
     def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_rec_layers: int = 0,
-                 num_ff_layers: int = 1, bias: bool = True, repeat_input: int = 1, out_style: str = 'mean',
+                 num_ff_layers: int = 1, repeat_input: int = 1, out_style: str = 'mean',
                  dt: float = 1e-3, device=None, dtype=None, flif_kwargs: dict = {}, readout_kwargs: dict = {},
                  **kwargs) -> None:
 
@@ -431,10 +434,10 @@ class PolicyNetRSNNPB(Module):
         layers = OrderedDict()
         for i in range(num_rec_layers):
             dim = in_dim if i == 0 else hidden_dim
-            layers[f'lif_rec{i + 1}'] = FLIF_B(dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **rec_flif_kwargs)
+            layers[f'lif_rec{i + 1}'] = FLIF_B(dim, hidden_dim, dt=dt, **factory_kwargs, **rec_flif_kwargs)
         for i in range(num_ff_layers):
             dim = in_dim if (i == 0 and num_rec_layers == 0) else hidden_dim
-            layers[f'lif_ff{i + 1}'] = FLIF_B(dim, hidden_dim, bias=bias, dt=dt, **factory_kwargs, **ff_flif_kwargs)
+            layers[f'lif_ff{i + 1}'] = FLIF_B(dim, hidden_dim, dt=dt, **factory_kwargs, **ff_flif_kwargs)
         layers['mu'] = Readout(hidden_dim, action_dim, dt=dt, **factory_kwargs, **readout_kwargs)
         layers['logvar'] = Readout(hidden_dim, action_dim, dt=dt, **factory_kwargs, **readout_kwargs)
         self.basis = nn.ModuleDict(layers)
@@ -477,6 +480,163 @@ class PolicyNetRSNNPB(Module):
 
         mu_outs = torch.empty((T, N, self.action_dim), device=next(self.basis.mu.parameters()).device)
         logvar_outs = torch.empty((T, N, self.action_dim), device=next(self.basis.logvar.parameters()).device)
+        for t in range(T):
+            mus, logvars = [], []
+            for i in range(self.repeat_input):
+                mu, logvar = self.step(state[t], target[t])
+                mus.append(mu)
+                logvars.append(logvar)
+            if self.out_style == 'last':
+                mu_outs[t] = mu
+                logvar_outs[t] = logvar
+            elif self.out_style == 'mean':
+                mus = torch.stack(mus)
+                logvars = torch.stack(logvars)
+                mu_outs[t] = mus.mean(dim=0)
+                logvar_outs[t] = logvars.mean(dim=0)
+
+        return mu_outs, logvar_outs
+
+    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False) -> Tensor:
+
+        mu, logvar = self(state, target)
+
+        if deterministic:
+            return mu
+        else:
+            return rp(mu, logvar)
+
+
+class PolicyNetRSNNPB_snntorch(Module):
+    def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_rec_layers: int = 0,
+                 num_ff_layers: int = 1, repeat_input: int = 1, out_style: str = 'mean',
+                 dt: float = 1e-3, device=None, dtype=None, flif_kwargs: dict = {}, readout_kwargs: dict = {},
+                 **kwargs) -> None:
+
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(PolicyNetRSNNPB_snntorch, self).__init__()
+
+        # gather layer parameters
+        self.action_dim = action_dim
+        self.repeat_input = repeat_input
+        rec_flif_kwargs = copy.deepcopy(flif_kwargs)
+        rec_flif_kwargs['recurrent'] = True
+        ff_flif_kwargs = copy.deepcopy(flif_kwargs)
+        ff_flif_kwargs['recurrent'] = False
+        in_dim = state_dim + target_dim
+        self.dt = dt
+        #V_tau_lif = torch.tensor(flif_kwargs.get('V_tau_mean', torch.rand(hidden_dim)))
+        #I_tau_lif = torch.tensor(flif_kwargs.get('I_tau_mean', torch.rand(hidden_dim)))
+        #alpha_lif = torch.exp(-self.dt / I_tau_lif)
+        #beta_lif = torch.exp(-self.dt / V_tau_lif)
+        #V_tau_out = torch.tensor(readout_kwargs.get('V_tau_mean', torch.rand(action_dim)))
+        #I_tau_out = torch.tensor(readout_kwargs.get('I_tau_mean', torch.rand(action_dim)))
+        #alpha_out = torch.exp(-self.dt / I_tau_out)
+        #beta_out = torch.exp(-self.dt / V_tau_out)
+        n_pop = readout_kwargs.get('n_pop', 1)
+
+        # make layers
+        layers = OrderedDict()
+        for i in range(num_rec_layers):
+            dim = in_dim if i == 0 else hidden_dim
+            layers[f'lif_rec_in{i + 1}'] = nn.Linear(dim, hidden_dim, flif_kwargs.get('bias', True), **factory_kwargs)
+            layers[f'lif_rec{i + 1}'] = snn.RSynaptic(
+                # alpha=alpha_lif,
+                alpha=torch.rand(hidden_dim),
+                # beta=beta_lif.repeat(hidden_dim).clone(),
+                beta=torch.rand(hidden_dim),
+                linear_features=hidden_dim,
+                learn_alpha=flif_kwargs.get('train_I_tau', False),
+                learn_beta=flif_kwargs.get('train_V_tau', False),
+                init_hidden=True
+            )
+        for i in range(num_ff_layers):
+            dim = in_dim if (i == 0 and num_rec_layers == 0) else hidden_dim
+            layers[f'lif_ff_in{i + 1}'] = nn.Linear(dim, hidden_dim, flif_kwargs.get('bias', True), **factory_kwargs)
+            layers[f'lif_ff{i + 1}'] = snn.Synaptic(
+                # alpha=alpha_lif,
+                alpha=torch.rand(hidden_dim),
+                # beta=beta_lif.repeat(hidden_dim).clone(),
+                beta=torch.rand(hidden_dim),
+                learn_alpha=flif_kwargs.get('train_I_tau', False),
+                learn_beta=flif_kwargs.get('train_V_tau', False),
+                init_hidden=True
+            )
+        layers['mu_in'] = nn.Linear(hidden_dim, action_dim * n_pop, readout_kwargs.get('bias', True), **factory_kwargs)
+        layers['mu'] = snn.Synaptic(
+            # alpha=alpha_out,
+            alpha=0.,
+            # beta=beta_out.repeat(action_dim).clone(),
+            beta=torch.rand(action_dim * n_pop),
+            learn_alpha=readout_kwargs.get('train_I_tau', False),
+            learn_beta=flif_kwargs.get('train_V_tau', False),
+            reset_mechanism='none',
+            output=True,
+            init_hidden=True
+        )
+        layers['mu_out'] = nn.Linear(action_dim * n_pop, action_dim, bias=False)
+        nn.init.constant_(layers['mu_out'].weight, 1. / n_pop)
+        layers['logvar_in'] = nn.Linear(hidden_dim, action_dim * n_pop, readout_kwargs.get('bias', True), **factory_kwargs)
+        layers['logvar'] = snn.Synaptic(
+            #alpha=alpha_out,
+            alpha=0.,
+            #beta=beta_out.repeat(action_dim).clone(),
+            beta=torch.rand(action_dim * n_pop),
+            learn_alpha=readout_kwargs.get('train_I_tau', False),
+            learn_beta=flif_kwargs.get('train_V_tau', False),
+            reset_mechanism='none',
+            output=True,
+            init_hidden=True
+        )
+        layers['logvar_out'] = nn.Linear(action_dim * n_pop, action_dim, bias=False)
+        nn.init.constant_(layers['logvar_out'].weight, 1. / n_pop)
+        self.basis = nn.ModuleDict(layers)
+
+        self.state_initialized = False
+        assert repeat_input >= 1
+        self.repeat_input = repeat_input
+        assert out_style.lower() in ['mean', 'last']
+        self.out_style = out_style.lower()
+
+    def reset_state(self) -> None:
+        self.state_initialized = False
+
+    def init_state(self, batch_size: int = 1) -> None:
+        for name, layer in self.basis.items():
+            reset_fn = getattr(layer, 'reset_hidden', None)
+            if callable(reset_fn): reset_fn()
+        self.state_initialized = True
+
+    def step(self, state: Tensor, target: Tensor) -> [Tensor, Tensor]:
+        x = torch.cat((state, target), -1)
+        for name, layer in self.basis.items():
+            if 'lif' in name.lower():
+                x = layer(x)
+
+        mu = self.basis.mu(self.basis.mu_in(x))[-1]
+        logvar = self.basis.logvar(self.basis.logvar_in(x))[-1]
+
+        return self.basis.mu_out(mu), self.basis.logvar_out(logvar)
+
+    def forward(self, state: Tensor, target: Tensor) -> [Tensor, Tensor]:
+
+        device = next(self.basis.mu.parameters()).device
+
+        if len(state.shape) == 2:
+            state.unsqueeze_(0)
+
+        if len(target.shape) == 2:
+            target.unsqueeze_(0)
+
+        T = state.shape[0]
+        N = state.shape[1]
+        D = state.shape[2]
+
+        if not self.state_initialized:
+            self.init_state(N)
+
+        mu_outs = torch.empty((T, N, self.action_dim), device=device)
+        logvar_outs = torch.empty((T, N, self.action_dim), device=device)
         for t in range(T):
             mus, logvars = [], []
             for i in range(self.repeat_input):

@@ -6,4 +6,6 @@ omegaconf
 gym
 # dm-control
 pygame
+snntorch
+tqdm
 ffmpeg  # conda install -c conda-forge ffmpeg

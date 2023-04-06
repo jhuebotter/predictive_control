@@ -174,6 +174,9 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     elif type_ == 'rsnnpbn':
         from src.models.SNN_models import PolicyNetRSNNPB_snntorch
         model = PolicyNetRSNNPB_snntorch
+    elif type_ == 'rsnnpbcs':
+        from src.models.cstork_SNN import PolicyNetRSNNPB_cstork
+        model = PolicyNetRSNNPB_cstork
     else:
         raise NotImplementedError(f"the policy model {type_} is not implemented")
 
@@ -231,6 +234,9 @@ def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimize
         Opt = torch.optim.Adam
     elif optim == 'sgd':
         Opt = torch.optim.SGD
+    elif optim == 'smorms3':
+        from control_stork.optimizers import SMORMS3
+        Opt = SMORMS3
     else:
         raise NotImplementedError(f'The optimizer {optim} is not implemented')
     if isinstance(model, torch.nn.Module):

@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.nn import Module, init
 from collections import OrderedDict
 from src.utils import reparameterize as rp
+from src.extratyping import *
 
 
 class Offset(Module):
@@ -105,14 +106,14 @@ class TransitionNetLRNNPB(Module):
             layer.init_state(batch_size)
         self.state_initialized = True
 
-    def step(self, state: Tensor, action: Tensor) -> [Tensor, Tensor]:
+    def step(self, state: Tensor, action: Tensor) -> Union[Tensor, Tensor]:
         x = torch.cat((state, action), -1)
         for name, layer in self.basis.items():
             if 'lrnn' in name.lower():
                 x = layer(x)
         return self.basis.mu(x), self.basis.logvar(x)
 
-    def forward(self, state: Tensor, action: Tensor) -> [Tensor, Tensor]:
+    def forward(self, state: Tensor, action: Tensor) -> Union[Tensor, Tensor]:
 
         if len(state.shape) == 2:
             state.unsqueeze_(0)

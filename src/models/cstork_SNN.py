@@ -140,7 +140,7 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
         if self.out_style == "mean":
             output_group = new = self.basis.add_group(TimeAverageReadoutGroup(
                 2 * action_dim,
-                steps=steps,
+                steps=self.repeat_input,
                 name='Time Average Readout Group'))
 
         elif self.out_style == "last":

@@ -41,7 +41,7 @@ parser.add_argument(
     default="",
 )
 parser.add_argument(
-    "--config", help="name of the config file", type=str, default="config_snn_pol_cstork.yaml"
+    "--config", help="name of the config file", type=str, default="config.yaml"
 )
 args, left_argv = parser.parse_known_args()
 

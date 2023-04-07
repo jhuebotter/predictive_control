@@ -32,6 +32,8 @@ import time
 
 torch.autograd.set_detect_anomaly(True)
 
+print('Pytorch version', torch.__version__)
+
 # read the directory to be loaded
 parser = argparse.ArgumentParser()
 parser.add_argument(

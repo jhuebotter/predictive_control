@@ -41,7 +41,7 @@ parser.add_argument(
     default="",
 )
 parser.add_argument(
-    "--config", help="name of the config file", type=str, default="config.yaml"
+    "--config", help="name of the config file", type=str, default="config_snn_pol_cstork.yaml"
 )
 args, left_argv = parser.parse_known_args()
 
@@ -181,6 +181,7 @@ while step <= config["total_env_steps"]:
                 action = policynet.predict(
                     observation.view(1, 1, -1), target.view(1, 1, -1)
                 ).flatten()
+
                 a = action.flatten().detach().clip(action_min, action_max)
                 next_observation, next_target, reward, done, info = env.step(
                     a.cpu().numpy()

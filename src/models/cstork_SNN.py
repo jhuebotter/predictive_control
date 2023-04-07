@@ -32,6 +32,7 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
         readout_kwargs: dict = {},
         neuron_type=FastLIFGroup,
         act_func = SigmoidSpike,
+        connection_dims: Optional[int] = None,
         **kwargs,
     ) -> None:
 
@@ -74,11 +75,17 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
             activation = act_func,
         )
 
-        connection_class = BottleneckLinearConnection
-        connection_kwargs = dict(
-            bias = True,
-            n_dims = kwargs.pop('connection_dims', 10),  # TODO! Make this a parameter
-        )
+        if connection_dims is None:
+            connection_class = Connection
+            connection_kwargs = dict(
+                bias = True,
+            )
+        else:
+            connection_class = BottleneckLinearConnection
+            connection_kwargs = dict(
+                bias = True,
+                n_dims = connection_dims,  # TODO! Make this a parameter
+            )
 
         if 'V_tau_mean' not in readout_kwargs:
             readout_kwargs['V_tau_mean'] = 5e-3
@@ -89,6 +96,7 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
         # make the model
         self.basis = RecurrentSpikingModel(device=device, dtype=dtype)
         input_group = prev = self.basis.add_group(InputGroup(in_dim, name='Input Group'))
+        first = True
         for i in range(num_rec_layers):
             new = Layer(
                 name=f'Recurrent LIF Cell Group {i+1}',
@@ -97,11 +105,14 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
                 input_group=prev,
                 recurrent=True,
                 regs = regs,
-                connection_class=connection_class,
+                connection_class=Connection if first else connection_class,
+                recurrent_connection_class=connection_class,
                 neuron_class=neuron_type,
                 neuron_kwargs=neuron_kwargs,
-                connection_kwargs=connection_kwargs
+                connection_kwargs=dict(bias=True) if first else connection_kwargs,
+                recurrent_connection_kwargs=connection_kwargs
             )
+            first = False
             initializer.initialize(new)
             prev = new.output_group
         for i in range(num_ff_layers):
@@ -112,11 +123,12 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
                 input_group=prev,
                 recurrent=False,
                 regs = regs,
-                connection_class=connection_class,
+                connection_class=Connection if first else connection_class,
                 neuron_class=neuron_type,
                 neuron_kwargs=neuron_kwargs,
-                connection_kwargs=connection_kwargs
+                connection_kwargs=dict(bias=True) if first else connection_kwargs
             )
+            first = False
             initializer.initialize(new)
             prev = new.output_group
 
@@ -141,11 +153,13 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
             output_group = new = self.basis.add_group(TimeAverageReadoutGroup(
                 2 * action_dim,
                 steps=self.repeat_input,
+                weight_scale=1.,
                 name='Time Average Readout Group'))
 
         elif self.out_style == "last":
             output_group = new = self.basis.add_group(DirectReadoutGroup(
                 2 * action_dim,
+                weight_scale=1.,
                 name='Direct Readout Group'))
 
         con = self.basis.add_connection(Connection(prev, new, bias=False, requires_grad=False))

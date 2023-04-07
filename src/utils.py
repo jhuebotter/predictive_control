@@ -123,6 +123,8 @@ def make_act_func(params: dict) -> dict:
             params['act_func'] = torch.sigmoid
         elif af == 'tanh':
             params['act_func'] = F.tanh
+        elif af == 'default':
+            params.pop('act_func')
         else:
             raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
 

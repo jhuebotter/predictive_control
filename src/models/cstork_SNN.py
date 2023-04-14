@@ -183,6 +183,15 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
         self.basis.reset_state(batch_size)
         self.state_initialized = True
 
+    def get_log_dict(self) -> dict[str, object]:
+
+        log_dict = self.basis.get_monitor_data()
+        for key in log_dict:
+            if log_dict[key] is None:
+                del log_dict[key]
+
+        return log_dict
+
     def step(self, state: Tensor, target: Tensor, record: bool = False) -> Union[Tensor, Tensor]:
         x = torch.cat((state, target), -1)
 
@@ -225,10 +234,10 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
         return mu_outs, logvar_outs
 
     def predict(
-        self, state: Tensor, target: Tensor, deterministic: bool = False
+        self, state: Tensor, target: Tensor, deterministic: bool = False, record: bool = False
     ) -> Tensor:
 
-        mu, logvar = self(state, target)
+        mu, logvar = self(state, target, record)
 
         if deterministic:
             return mu

@@ -181,7 +181,8 @@ while step <= config["total_env_steps"]:
 
                 # chose action and advance simulation
                 action = policynet.predict(
-                    observation.view(1, 1, -1), target.view(1, 1, -1)
+                    observation.view(1, 1, -1), target.view(1, 1, -1), 
+                    deterministic = True, record = True
                 ).flatten()
 
                 a = action.flatten().detach().clip(action_min, action_max)

@@ -465,6 +465,92 @@ def train_policynetPB_sample(policy_model: Module, transition_model: Module, mem
         'policy model mean vars std': np.mean(vars_std)
     }
 
+
+
+def train_policynetPB_sample2(policy_model: Module, transition_model: Module, memory: ReplayMemory,
+                      optimizer: torch.optim.Optimizer, batch_size: int, loss_gain: array,
+                      warmup_steps: int = 20, n_batches: int = 1, unroll_steps: int = 20, beta: float = 0.0,
+                      max_norm: Optional[float] = None, deterministic_policy: bool = True, deterministic_transition: bool = True, **kwargs) -> dict:
+    """function used to update the parameters of a probabilistic policy network"""
+
+    device = next(policy_model.parameters()).device
+
+    losses = []
+    loss_gain = torch.tensor(loss_gain).to(device)
+
+    grad_norms = []
+    clipped_grad_norms = []
+
+    pbar = tqdm(range(n_batches), desc=f"{'updating policy network':30}")
+    for i in pbar:
+
+        policy_model.zero_grad(set_to_none=True)
+        transition_model.zero_grad(set_to_none=True)
+        loss = torch.zeros(1, device=device)
+
+        # get a batch of episodes
+        episode_batch = []
+        while len(episode_batch) < batch_size:
+            sample_batch = memory.sample(batch_size)  # [sample, step, (state, target, action, next_state)]
+            for episode in sample_batch:
+                if len(episode) >= warmup_steps:
+                    episode_batch.append(episode)
+                    if len(episode_batch) == batch_size: break
+
+        # make a random sample from each episode of length = warmup_steps
+        state_dim = episode_batch[0][0][0].size(-1)
+        target_dim = episode_batch[0][0][1].size(-1)
+        action_dim = episode_batch[0][0][2].size(-1)
+
+        state_batch = torch.zeros((warmup_steps, batch_size, state_dim), device=device)
+        target_batch = torch.zeros((warmup_steps, batch_size, target_dim), device=device)
+        action_batch = torch.zeros((warmup_steps, batch_size, action_dim), device=device)
+
+        for j in range(batch_size):
+            r = torch.randint(low=0, high=len(episode_batch[j]) - warmup_steps, size=(1,))
+            state_batch[:, j, :] = torch.stack([step[0].squeeze() for step in episode_batch[j][r:r+warmup_steps]])
+            target_batch[:, j, :] = torch.stack([step[1].squeeze() for step in episode_batch[j][r:r+warmup_steps]])
+            action_batch[:, j, :] = torch.stack([step[2].squeeze() for step in episode_batch[j][r:r+warmup_steps]])
+
+        # reset the models
+        policy_model.reset_state()
+        transition_model.reset_state()
+
+        # warm up both models
+        _ = policy_model(state_batch[:-1], target_batch[:-1])
+        _ = transition_model(state_batch[:-1], action_batch[:-1])
+
+        new_state_hat = state_batch[-1]
+        t = target_batch[-1]
+
+        for k in range(unroll_steps):
+
+            # sample an action from policy network
+            a = policy_model.predict(new_state_hat, t, deterministic=deterministic_policy)
+
+            s_hat_delta = transition_model.predict(new_state_hat, a, deterministic=deterministic_transition)
+            s_hat = s_hat_delta + new_state_hat
+
+            loss = torch.mean(torch.pow(t - s_hat, 2) * loss_gain)
+
+            new_state_hat = s_hat
+
+        losses.append(loss.item())
+        loss.backward()
+        grad_norms.append(gradnorm(policy_model))
+        if max_norm:
+            clip_grad_norm_(policy_model.parameters(), max_norm)
+        clipped_grad_norms.append(gradnorm(policy_model))
+        optimizer.step()
+
+        pbar.set_postfix_str(f'loss: {loss.item()}')
+
+    return {
+        'policy model loss': np.mean(losses),
+        'policy model grad norm': np.mean(grad_norms),
+        'policy model clipped grad norm': np.mean(clipped_grad_norms),
+    }
+
 @torch.no_grad()
 def baseline_prediction(transitionnet: Module, episode: list, warmup: int = 0) -> dict:
     """function used to evaluate transition network predictions against baseline values"""

@@ -5,7 +5,7 @@ from control_stork.nodes import InputGroup, ReadoutGroup, FastReadoutGroup, Dire
 from control_stork.connections import Connection, BottleneckLinearConnection
 from control_stork.models import RecurrentSpikingModel
 from control_stork.initializers import FluctuationDrivenCenteredNormalInitializer, KaimingNormalInitializer, DistInitializer, AverageInitializer
-from control_stork.monitors import PlotStateMonitor 
+from control_stork.monitors import PlotStateMonitor, PopulationSpikeCountMonitor
 # SpikeMonitor, SpikeCountMonitor, StateMonitor, PopulationFiringRateMonitor, PopulationSpikeCountMonitor
 from control_stork.regularizers import LowerBoundL2, UpperBoundL2, WeightL2Regularizer
 from control_stork.plotting import plot_spikes, plot_traces
@@ -314,6 +314,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
         neuron_type=FastLIFGroup,
         act_func = SigmoidSpike,
         connection_dims: Optional[int] = None,
+        nu: float = 50.0,
         **kwargs,
     ) -> None:
 
@@ -363,7 +364,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
         # make the initializers
         initializer = FluctuationDrivenCenteredNormalInitializer(
             sigma_u=1.0,
-            nu=50,
+            nu=nu,
             time_step=dt,
         )
 
@@ -426,6 +427,8 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
                 plot_fn=plot_traces, 
                 title=f'Recurrent LIF Cell Group {i+1}'
                 ))
+            self.basis.add_monitor(PopulationSpikeCountMonitor(new.output_group, avg=True))
+
             prev = new.output_group
         for i in range(num_ff_layers):
             new = Layer(
@@ -455,6 +458,8 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
                 plot_fn=plot_traces, 
                 title=f'FF LIF Cell Group {i+1}'
                 ))
+            self.basis.add_monitor(PopulationSpikeCountMonitor(new.output_group, avg=True))
+
             prev = new.output_group
 
         # make the readout

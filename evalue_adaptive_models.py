@@ -6,6 +6,7 @@ from src.plotting import animate_predictions, render_video, plot_trajectories
 from src.extratyping import *
 import wandb
 import numpy as np
+import gym
 
 
 def rotate(vec, deg):
@@ -203,3 +204,137 @@ def evalue_adaptive_models(
         )
 
     return results
+
+
+
+# TODO: THE FUNCTION BELOW iS NOT COMPLETE
+def evalue_adaptive_models_venv(
+    policynet: Module,
+    transitionnet: Module,
+    task_config: dict,
+    record: bool = True,
+    unroll: int = 10,
+    device: str = "cpu",
+    step: int = 0,
+    warmup: int = 0,
+    run_dir: str = "results",
+) -> dict:
+
+    frames = []
+    baseline_predictions = []
+    rewards = []
+    episodes = []
+
+    states, targets, env = make_eval_tasks(task_config)
+    N = len(states)
+
+    envs = gym.vector.SyncVectorEnv(
+        [lambda: make_eval_tasks(task_config)[-1] for _ in range(N)]
+    )
+
+    action_min = torch.tensor(env.action_space.low, device=device)
+    action_max = torch.tensor(env.action_space.high, device=device)
+
+    if record:
+        render_mode = "rgb_array"
+    else:
+        render_mode = None
+
+    # reset the environments
+    observations, targets = envs.reset(state=states, target=targets)
+    observations = torch.tensor(observation, device=device, dtype=torch.float32)
+    targets = torch.tensor(target, device=device, dtype=torch.float32)
+
+    # reset the network states
+    policynet.reset_state()
+    transitionnet.reset_state()
+
+    episode = []
+    total_reward = 0.0
+    done = False
+    while not done:
+
+        # chose action and advance simulation
+        action = policynet.predict(
+            observation.view((1, N, -1)),
+            target.view((1, N, -1)),
+            deterministic=True,
+            record=record,
+        )
+        a = action.flatten().detach().clip(action_min, action_max)
+        next_observation, next_target, reward, done, info = env.step(
+            a.cpu().numpy()
+        )
+        next_observation = torch.tensor(
+            next_observation, device=device, dtype=torch.float32
+        )
+        next_target = torch.tensor(next_target, device=device, dtype=torch.float32)
+
+        # save transition for later
+        transition = (
+            observation.clone(),
+            target.clone(),
+            a.clone(),
+            reward,
+            next_observation.clone(),
+        )
+        episode.append(transition)
+
+        if render_mode:
+            pixels = env.render(mode=render_mode)
+            frames.append(pixels)
+
+        # env.render('human')
+
+        # environment step complete
+        observation = next_observation
+        target = next_target
+        total_reward += reward
+
+    rewards.append({"mean episode reward eval": total_reward})
+    # compute prediction performance against baseline
+    baseline_predictions.append(
+        baseline_prediction(transitionnet, episode, warmup=warmup)
+    )
+    episodes.append(episode)
+
+    baseline_results = dict_mean(baseline_predictions)
+    rewards = dict_mean(rewards)
+
+    results = {**rewards}
+    for k, v in baseline_results.items():
+        results[f"{k} eval"] = v
+
+    # render video and save to disk
+    if len(frames) and record:
+        plot_trajectories(
+            episodes, save=Path(run_dir, f"episode_trajectories_eval_{step}.png")
+        )
+        render_video(
+            frames,
+            env.metadata["render_fps"],
+            save=Path(run_dir, f"episode_animation_eval_{step}.mp4"),
+        )
+        animate_predictions(
+            episode,
+            transitionnet,
+            env.state_labels,
+            unroll=unroll,
+            save=Path(run_dir, f"prediction_animation_eval_{step}_{e}.mp4"),
+        )
+        results.update(
+            {
+                f"episode trajectories eval": wandb.Image(
+                    str(Path(run_dir, f"episode_trajectories_eval_{step}.png"))
+                ),
+                f"episode animation eval": wandb.Video(
+                    str(Path(run_dir, f"episode_animation_eval_{step}.mp4"))
+                ),
+                f"prediction animation eval": wandb.Video(
+                    str(Path(run_dir, f"prediction_animation_eval_{step}_{e}.mp4"))
+                ),
+            }
+        )
+
+    return results
+

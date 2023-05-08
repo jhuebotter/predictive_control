@@ -22,7 +22,7 @@ general:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 30
+      n_batches: 100
       unroll_steps: 3
       warmup_steps: 8
       max_norm: 50
@@ -32,6 +32,7 @@ policy:
   model:
     type: RSNNcs
     params:
+      hidden_dim: 256
       num_rec_layers: 0
       num_ff_layers: 2
       repeat_input: 10
@@ -39,8 +40,9 @@ policy:
       dt: 0.002
       lowerBoundL2Strength: 0.0
       upperBoundL2Strength: 1.0
-      weightL2Strength: 0.0001
+      weightL2Strength: 0.0
       connection_dims: null
+      nu: 50
       #flif_kwargs:
         # train_V_tau: True
         # train_I_tau: True
@@ -55,7 +57,6 @@ policy:
   learning:
     params:
       deterministic_transition: False
-      beta: 0.0
 
 # transition model parameters
 transition:
@@ -68,15 +69,15 @@ transition:
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 8_000
-episodes_per_iteration: 10
-evaluate: False
+total_env_steps: 1_000_000
+episodes_per_iteration: 20
+evaluate: True
 evaluate_every_n_iterations: 10
 
 # plotting parameters
 animate: True
 animate_unroll: 10
-record_every_n_iterations: 1
+record_every_n_iterations: 10
 record_first_n_episodes: 5
 
 # logging parameters

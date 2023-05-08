@@ -136,7 +136,7 @@ class TransitionNetPBAdaptive(AdaptiveModel):
         init.zeros_(self.basis.fc_mu.bias)
         init.zeros_(self.basis.fc_var.bias)
 
-    def forward(self, state: Tensor, action: Tensor) -> (Tensor, Tensor):
+    def forward(self, state: Tensor, action: Tensor) -> Union[Tensor, Tensor]:
 
         if len(state.shape) == 2:
             state.unsqueeze_(0)

@@ -14,7 +14,7 @@ from src.utils import (
     update_dict,
 )
 from src.training_functions import (
-    train_policynetPB_sample,
+    train_policynetSNN,
     train_transitionnetRNNPBNLL_sample_unroll,
     baseline_prediction,
 )
@@ -26,7 +26,6 @@ import argparse
 import wandb
 from evalue_adaptive_models import evalue_adaptive_models
 import copy
-import time
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -81,25 +80,15 @@ transitionnet = make_transition_model(env, transition_config.get("model", {})).t
 policynet = make_policy_model(env, policy_config.get("model", {})).to(device)
 
 # initialize the optimizers
-opt_trans = make_optimizer(transitionnet.basis, transition_config.get("optim", {}))
 opt_policy = make_optimizer(policynet.basis, policy_config.get("optim", {}))
 
 # load model and other things from checkpoint
-if args.load_dir:
-    print("loading weights from", args.load_dir)
-    transitionnet, opt_trans = load_weights_from_disk(
+transitionnet, opt_trans = load_weights_from_disk(
         transitionnet,
-        Path(args.load_dir, "transitionnet_latest.cpt"),
-        opt_trans,
-        device,
+        Path("transitionnet_baseline3.cpt"),
+        device = device,
     )
-    for pg in opt_trans.param_groups:
-        pg.update(config["transition"]["optim"]["params"])
-    policynet, opt_policy = load_weights_from_disk(
-        policynet, Path(args.load_dir, "policynet_latest.cpt"), opt_policy, device
-    )
-    for pg in opt_policy.param_groups:
-        pg.update(config["policy"]["optim"]["params"])
+print('transitionnet loaded')
 
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -180,7 +169,7 @@ while step <= config["total_env_steps"]:
                 # chose action and advance simulation
                 action = policynet.predict(
                     observation.view(1, 1, -1), target.view(1, 1, -1), 
-                    deterministic = True, record = True
+                    record = True
                 ).flatten()
 
                 a = action.flatten().detach().clip(action_min, action_max)
@@ -258,13 +247,7 @@ while step <= config["total_env_steps"]:
             step=iteration,
         )
 
-    # update transition and policy models based on data in memory
-    transition_results = train_transitionnetRNNPBNLL_sample_unroll(
-        transitionnet, memory, opt_trans, **transition_config["learning"]["params"]
-    )
-    transitionnet_updates += transition_config["learning"]["params"]["n_batches"]
-
-    policy_results = train_policynetPB_sample(
+    policy_results = train_policynetSNN(
         policynet,
         transitionnet,
         memory,
@@ -283,7 +266,7 @@ while step <= config["total_env_steps"]:
         "transitionnet updates": transitionnet_updates,
     }
     iteration_results = dict(
-        **transition_results, **policy_results, **baseline_results, **data, **rewards
+        **policy_results, **baseline_results, **data, **rewards
     )
 
     # evaluate if necessary
@@ -321,20 +304,7 @@ while step <= config["total_env_steps"]:
     wandb.log(iteration_results, step=iteration)
 
     # save the model parameters
-    save_checkpoint(
-        transitionnet,
-        opt_trans,
-        path=Path(run_dir, "transitionnet_latest.cpt"),
-        **iteration_results,
-    )
-    if transition_results["transition model loss"] < best_transition_loss:
-        best_transition_loss = transition_results["transition model loss"]
-        save_checkpoint(
-            transitionnet,
-            opt_trans,
-            path=Path(run_dir, "transitionnet_best.cpt"),
-            **iteration_results,
-        )
+
     save_checkpoint(
         policynet,
         opt_policy,

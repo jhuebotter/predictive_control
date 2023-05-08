@@ -179,6 +179,9 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     elif type_ == 'rsnnpbcs':
         from src.models.cstork_SNN import PolicyNetRSNNPB_cstork
         model = PolicyNetRSNNPB_cstork
+    elif type_ == 'rsnncs':
+        from src.models.cstork_SNN import PolicyNetRSNN_cstork
+        model = PolicyNetRSNN_cstork
     else:
         raise NotImplementedError(f"the policy model {type_} is not implemented")
 

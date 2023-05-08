@@ -23,28 +23,31 @@ general:
     params:
       batch_size: 1_024
       n_batches: 30
-      unroll_steps: 10
+      unroll_steps: 3
       warmup_steps: 8
       max_norm: 50
 
 # policy model parameters
 policy:
   model:
-    type: RSNNPBcs
+    type: RSNNcs
     params:
-      num_rec_layers: 1
-      num_ff_layers: 1
-      repeat_input: 5
+      num_rec_layers: 0
+      num_ff_layers: 2
+      repeat_input: 10
       out_style: last
       dt: 0.002
-      connection_dims: 20
+      lowerBoundL2Strength: 0.0
+      upperBoundL2Strength: 1.0
+      weightL2Strength: 0.0001
+      connection_dims: null
       #flif_kwargs:
         # train_V_tau: True
         # train_I_tau: True
       readout_kwargs:
         # train_V_tau: True
         # train_I_tau: False
-        n_pop: 100
+        n_pop: 50
   optim:
     type: smorms3
     params:
@@ -65,15 +68,15 @@ transition:
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 4_000
+total_env_steps: 8_000
 episodes_per_iteration: 10
-evaluate: True
+evaluate: False
 evaluate_every_n_iterations: 10
 
 # plotting parameters
-animate: False
-animate_unroll: 5
-record_every_n_iterations: 50
+animate: True
+animate_unroll: 10
+record_every_n_iterations: 1
 record_first_n_episodes: 5
 
 # logging parameters

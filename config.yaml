@@ -32,7 +32,8 @@ policy:
   model:
     type: rnnPBadapt
     params:
-      act_func: default
+      activation_kwargs:
+        act_fn: default
       num_rec_layers: 0
       num_ff_layers: 2
   learning:
@@ -45,7 +46,8 @@ transition:
   model:
     type: rnnPBadapt
     params:
-      act_func: default
+      activation_kwargs:
+        act_fn: default
       num_rec_layers: 1
       num_ff_layers: 1
 

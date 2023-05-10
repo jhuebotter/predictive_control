@@ -47,7 +47,7 @@ class PolicyNetPBAdaptive(AdaptiveModel):
     """probabilistic MLP policy network"""
 
     def __init__(self, action_dim: int, state_dim: int, target_dim: int, hidden_dim: int, num_rec_layers: int = 0,
-                 num_ff_layers: int = 1, bias: bool = True, act_func: Callable = F.leaky_relu, **kwargs) -> None:
+                 num_ff_layers: int = 1, bias: bool = True, act_fn: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 
         # gather layer parameters
@@ -69,7 +69,7 @@ class PolicyNetPBAdaptive(AdaptiveModel):
             'fc_var_adapt': nn.Linear(hidden_dim, action_dim, bias)
         })
         self.bias = bias
-        self.act_func = act_func
+        self.act_fn = act_fn
         self.reset_adaptation_weights()
         init.zeros_(self.basis.fc_mu.bias)
         init.zeros_(self.basis.fc_var.bias)
@@ -86,9 +86,9 @@ class PolicyNetPBAdaptive(AdaptiveModel):
         for name, layer in self.basis.items():
             if 'gru' in name.lower():
                 x, self.h = layer(x)
-                x = self.act_func(x)
+                x = self.act_fn(x)
             elif 'fc_ff' in name.lower():
-                x = self.act_func(layer(x))
+                x = self.act_fn(layer(x))
 
         mu = self.basis['fc_mu'](x)  # + self.adaptive_layers['fc_mu_adapt'](x)
         logvar = self.basis['fc_var'](x)  # + self.adaptive_layers['fc_var_adapt'](x)
@@ -109,7 +109,7 @@ class TransitionNetPBAdaptive(AdaptiveModel):
     """probabilistic RNN transition network"""
 
     def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_rec_layers: int = 1, num_ff_layers: int = 0,
-                 bias: bool = True, act_func: Callable = F.leaky_relu, **kwargs) -> None:
+                 bias: bool = True, act_fn: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 
         # gather layer parameters
@@ -130,7 +130,7 @@ class TransitionNetPBAdaptive(AdaptiveModel):
             'fc_mu_adapt': nn.Linear(hidden_dim, state_dim, bias),
             'fc_var_adapt': nn.Linear(hidden_dim, state_dim, bias)
         })
-        self.act_func = act_func
+        self.act_fn = act_fn
         self.bias = bias
         self.reset_adaptation_weights()
         init.zeros_(self.basis.fc_mu.bias)
@@ -148,9 +148,9 @@ class TransitionNetPBAdaptive(AdaptiveModel):
         for name, layer in self.basis.items():
             if 'gru' in name.lower():
                 x, self.h = layer(x)
-                x = self.act_func(x)
+                x = self.act_fn(x)
             elif 'fc_ff' in name.lower():
-                x = self.act_func(layer(x))
+                x = self.act_fn(layer(x))
 
         mu = self.basis['fc_mu'](x)  # + self.adaptive_layers['fc_mu_adapt'](x)
         logvar = self.basis['fc_var'](x)  # + self.adaptive_layers['fc_var_adapt'](x)

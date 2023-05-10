@@ -33,7 +33,7 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
         flif_kwargs: dict = {},
         readout_kwargs: dict = {},
         neuron_type=FastLIFGroup,
-        act_func = SigmoidSpike,
+        act_fn = SigmoidSpike,
         connection_dims: Optional[int] = None,
         **kwargs,
     ) -> None:
@@ -75,7 +75,7 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
         neuron_kwargs = dict(
             tau_mem = flif_kwargs.get('V_tau_mean', 5e-3),
             tau_syn = flif_kwargs.get('I_tau_mean', 2e-3),
-            activation = act_func,
+            activation = act_fn,
             store_sequences = ['out', 'mem']
         )
 
@@ -312,7 +312,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
         flif_kwargs: dict = {},
         readout_kwargs: dict = {},
         neuron_type=FastLIFGroup,
-        act_func = SigmoidSpike,
+        act_fn = SigmoidSpike,
         connection_dims: Optional[int] = None,
         nu: float = 50.0,
         **kwargs,
@@ -347,7 +347,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
         lowerBoundL2Strength = kwargs.get("lowerBoundL2Strength", 0.0)
         lowerBoundL2Threshold = kwargs.get("lowerBoundL2Threshold", 1e-3)
         upperBoundL2Strength = kwargs.get("upperBoundL2Strength", 0.0)
-        upperBoundL2Threshold = kwargs.get("upperBoundL2Threshold", 0.8)
+        upperBoundL2Threshold = kwargs.get("upperBoundL2Threshold", 0.5)
         if lowerBoundL2Strength > 0.0:
             regLB = LowerBoundL2(lowerBoundL2Strength, threshold=lowerBoundL2Threshold, dims=False)
             regs.append(regLB)
@@ -371,7 +371,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
         neuron_kwargs = dict(
             tau_mem = flif_kwargs.get('V_tau_mean', 5e-3),
             tau_syn = flif_kwargs.get('I_tau_mean', 2e-3),
-            activation = act_func,
+            activation = act_fn,
             store_sequences = ['out', 'mem']
         )
 

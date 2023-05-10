@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 from .extratyping import *
 import collections
+from control_stork import activations
 
 
 def save_checkpoint(model: Module, optimizer: Optimizer = None, path: str = "model_checkpoint.cpt", **kwargs) -> None:
@@ -112,21 +113,32 @@ def make_env(config: dict, seed: int = 0) -> gym.Env:
     return env
 
 
-def make_act_func(params: dict) -> dict:
-    if 'act_func' in params.keys():
-        af = params['act_func']
+def make_act_fn(params: dict) -> dict:
+    if 'activation_kwargs' in params.keys():
+        af = params['activation_kwargs'].pop('act_fn').lower()
         if af == 'relu':
-            params['act_func'] = F.relu
+            params['act_fn'] = torch.nn.ReLU(**params['activation_kwargs'])
         elif af == 'lrelu':
-            params['act_func'] = F.leaky_relu
+            params['act_fn'] = torch.nn.LeakyReLU(**params['activation_kwargs'])
         elif af == 'sigmoid':
-            params['act_func'] = torch.sigmoid
+            params['act_fn'] = torch.nn.Sigmoid(**params['activation_kwargs'])
         elif af == 'tanh':
-            params['act_func'] = F.tanh
+            params['act_fn'] = torch.nn.Tanh(**params['activation_kwargs'])
+        elif af == 'sigmoidspike':
+            fn = activations.SigmoidSpike
+            fn.beta = params['activation_kwargs'].pop('beta', fn.beta)
+            params['act_fn'] = fn
+        elif af == 'gaussianspike':
+            fn = activations.GaussianSpike
+            fn.gamma = params['activation_kwargs'].pop('gamma', fn.gamma)
+            fn.lens = params['activation_kwargs'].pop('lens', fn.lens)
+            fn.scale = params['activation_kwargs'].pop('scale', fn.scale)
+            fn.hight = params['activation_kwargs'].pop('hight', fn.hight)
+            params['act_fn'] = fn
         elif af == 'default':
-            params.pop('act_func')
+            params.pop('act_fn', None)
         else:
-            raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+            raise NotImplementedError(f"the activation function {params['act_fn']} is not implemented")
 
     return params
 
@@ -148,7 +160,7 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
     else:
         raise NotImplementedError(f"the transition model {type_} is not implemented")
 
-    params = make_act_func(params)
+    params = make_act_fn(params)
 
     transitionnet = model(
         action_dim=action_dim,
@@ -185,7 +197,7 @@ def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Modul
     else:
         raise NotImplementedError(f"the policy model {type_} is not implemented")
 
-    params = make_act_func(params)
+    params = make_act_fn(params)
 
     policynet = model(
         action_dim=action_dim,
@@ -211,16 +223,16 @@ def make_policy_adaptation_model(env: gym.Env, config: dict, verbose: bool = Tru
     else:
         raise NotImplementedError(f"the policy model {type_} is not implemented")
 
-    if params['act_func'] == 'relu':
-        params['act_func'] = F.relu
-    elif params['act_func'] == 'lrelu':
-        params['act_func'] = F.leaky_relu
-    elif params['act_func'] == 'sigmoid':
-        params['act_func'] = torch.sigmoid
-    elif params['act_func'] == 'none':
-        params['act_func'] = None
+    if params['act_fn'] == 'relu':
+        params['act_fn'] = F.relu
+    elif params['act_fn'] == 'lrelu':
+        params['act_fn'] = F.leaky_relu
+    elif params['act_fn'] == 'sigmoid':
+        params['act_fn'] = torch.sigmoid
+    elif params['act_fn'] == 'none':
+        params['act_fn'] = None
     else:
-        raise NotImplementedError(f"the activation function {params['act_func']} is not implemented")
+        raise NotImplementedError(f"the activation function {params['act_fn']} is not implemented")
 
     policynet = model(
         action_dim=action_dim,

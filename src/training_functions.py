@@ -597,7 +597,6 @@ def train_policynetSNN(
 
         action_loss = action_loss / unroll_steps
         reg_loss = policy_model.get_reg_loss()
-        print(reg_loss.item())
         loss = action_loss + reg_loss
         action_losses.append(action_loss.item())
         reg_losses.append(reg_loss.item())

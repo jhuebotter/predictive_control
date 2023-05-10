@@ -43,6 +43,9 @@ policy:
       weightL2Strength: 0.0
       connection_dims: null
       nu: 50
+      activation_kwargs:
+        act_fn: gaussianspike
+        #beta: 10.0
       #flif_kwargs:
         # train_V_tau: True
         # train_I_tau: True
@@ -63,13 +66,14 @@ transition:
   model:
     type: rnnPBadapt
     params:
-      act_func: lrelu
+      activation_kwargs:
+        act_fn: lrelu
       num_rec_layers: 1
       num_ff_layers: 1
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 1_000_000
+total_env_steps: 4_000
 episodes_per_iteration: 20
 evaluate: True
 evaluate_every_n_iterations: 10

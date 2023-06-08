@@ -7,7 +7,7 @@ import collections
 from control_stork import activations
 
 
-def save_checkpoint(model: Module, optimizer: Optimizer = None, path: str = "model_checkpoint.cpt", **kwargs) -> None:
+def save_checkpoint(model: Module, optimizer: Optional[Optimizer] = None, path: str = "model_checkpoint.cpt", **kwargs) -> None:
     """save model parameters to disk"""
 
     checkpoint = {

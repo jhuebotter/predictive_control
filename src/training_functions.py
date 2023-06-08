@@ -512,6 +512,7 @@ def train_policynetSNN(
     max_norm: Optional[float] = None,
     record_policy: bool = True,
     deterministic_transition: bool = True,
+    exclude_monitors: list = [],
     **kwargs,
 ) -> dict:
     """function used to update the parameters of a spiking policy network"""
@@ -618,7 +619,7 @@ def train_policynetSNN(
         "policy model clipped grad norm": np.mean(clipped_grad_norms),
     }
 
-    results.update(policy_model.get_monitor_data())
+    results.update(policy_model.get_monitor_data(exclude=exclude_monitors))
 
     return results
 

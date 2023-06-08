@@ -1,0 +1,80 @@
+# general parameters
+seed: 42
+experiment: debug_snn
+
+# task parameters
+task:
+  type: plane
+  params:
+    max_episode_steps: 200
+    render: false
+    moving_target: 0.0
+
+# general parameters
+general:
+  model:
+    params:
+      hidden_dim: 256
+  optim:
+    type: adam
+    params:
+      lr: 0.0005
+  learning:
+    params:
+      batch_size: 1_024
+      n_batches: 30
+      unroll_steps: 10
+      warmup_steps: 8
+      max_norm: 50
+
+# policy model parameters
+policy:
+  model:
+    type: RSNNPBn
+    params:
+      num_rec_layers: 0
+      num_ff_layers: 2
+      repeat_input: 5
+      out_style: last
+      dt: 0.004
+      activation_kwargs:
+        act_fn: sigmoidspike
+        beta: 100.0
+      flif_kwargs:
+        train_V_tau: True
+        train_I_tau: True
+        reset: 'sub'
+      readout_kwargs:
+        train_V_tau: True
+        train_I_tau: False
+        n_pop: 10
+  learning:
+    params:
+      deterministic_transition: False
+      beta: 0.0
+
+# transition model parameters
+transition:
+  model:
+    type: rnnPBadapt
+    params:
+      act_fn: lrelu
+      num_rec_layers: 1
+      num_ff_layers: 1
+
+# training parameters
+memory_size: 3_000
+total_env_steps: 4_000
+episodes_per_iteration: 10
+evaluate: True
+evaluate_every_n_iterations: 10
+
+# plotting parameters
+animate: False
+animate_unroll: 5
+record_every_n_iterations: 50
+record_first_n_episodes: 5
+
+# logging parameters
+project: ann-control
+entity: jhuebotter

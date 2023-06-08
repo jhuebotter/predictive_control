@@ -138,13 +138,16 @@ while step <= config["total_env_steps"]:
     baseline_predictions = []
     rewards = []
 
+    record_this_iteration = (
+            iteration % config["record_every_n_iterations"] == 0 or iteration == 1
+        )
+
     for e in tqdm(
         range(1, config["episodes_per_iteration"] + 1),
         desc=f"{'obtaining experience':30}",
     ):
-        if e < config["record_first_n_episodes"] + 1 and (
-            iteration % config["record_every_n_iterations"] == 0 or iteration == 1
-        ):
+
+        if e < config["record_first_n_episodes"] + 1 and record_this_iteration:
             render_mode = "rgb_array"
         else:
             render_mode = None
@@ -252,6 +255,7 @@ while step <= config["total_env_steps"]:
         memory,
         opt_policy,
         loss_gain=env.loss_gain,
+        exclude_monitors=['PlotStateMonitor'] if not record_this_iteration else [],
         **policy_config["learning"]["params"],
     )
     policynet_updates += policy_config["learning"]["params"]["n_batches"]

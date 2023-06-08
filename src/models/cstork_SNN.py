@@ -88,7 +88,7 @@ class PolicyNetRSNNPB_cstork(torch.nn.Module):
             connection_class = BottleneckLinearConnection
             connection_kwargs = dict(
                 bias = True,
-                n_dims = connection_dims,  # TODO! Make this a parameter
+                n_dims = connection_dims,
             )
 
         if 'V_tau_mean' not in readout_kwargs:
@@ -527,8 +527,8 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
         self.basis.reset_state(batch_size)
         self.state_initialized = True
 
-    def get_monitor_data(self) -> dict[str, object]:
-        return self.basis.get_monitor_data()
+    def get_monitor_data(self, exclude: list = []) -> dict[str, object]:
+        return self.basis.get_monitor_data(exclude)
     
     def get_reg_loss(self) -> Tensor:
         return self.basis.compute_regularizer_losses()

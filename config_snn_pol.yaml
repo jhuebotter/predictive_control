@@ -43,7 +43,7 @@ policy:
       flif_kwargs:
         train_V_tau: True
         train_I_tau: True
-        reset: 'sub'
+        reset: sub
       readout_kwargs:
         train_V_tau: True
         train_I_tau: False
@@ -72,7 +72,7 @@ evaluate_every_n_iterations: 10
 # plotting parameters
 animate: False
 animate_unroll: 5
-record_every_n_iterations: 3
+record_every_n_iterations: 50
 record_first_n_episodes: 5
 
 # logging parameters

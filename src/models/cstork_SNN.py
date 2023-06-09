@@ -372,6 +372,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
             tau_mem = flif_kwargs.get('V_tau_mean', 5e-3),
             tau_syn = flif_kwargs.get('I_tau_mean', 2e-3),
             activation = act_fn,
+            reset = flif_kwargs.get('reset', 'sub'),
             store_sequences = ['out', 'mem']
         )
 

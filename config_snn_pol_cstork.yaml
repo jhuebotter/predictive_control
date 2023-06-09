@@ -23,7 +23,7 @@ general:
     params:
       batch_size: 1_024
       n_batches: 100
-      unroll_steps: 3
+      unroll_steps: 5
       warmup_steps: 8
       max_norm: 50
 
@@ -74,15 +74,15 @@ transition:
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 12_000
+total_env_steps: 60_000
 episodes_per_iteration: 20
 evaluate: True
-evaluate_every_n_iterations: 3
+evaluate_every_n_iterations: 15
 
 # plotting parameters
 animate: True
 animate_unroll: 10
-record_every_n_iterations: 3
+record_every_n_iterations: 15
 record_first_n_episodes: 5
 
 # logging parameters

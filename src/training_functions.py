@@ -532,6 +532,7 @@ def train_policynetSNN(
         policy_model.zero_grad(set_to_none=True)
         transition_model.zero_grad(set_to_none=True)
         loss = torch.zeros(1, device=device)
+        action_loss = torch.zeros(1, device=device)
 
         # get a batch of episodes
         episode_batch = []
@@ -592,7 +593,7 @@ def train_policynetSNN(
             )
             s_hat = s_hat_delta + new_state_hat
 
-            action_loss = torch.mean(torch.pow(t - s_hat, 2) * loss_gain)
+            action_loss += torch.mean(torch.pow(t - s_hat, 2) * loss_gain)
 
             new_state_hat = s_hat
 

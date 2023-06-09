@@ -277,11 +277,7 @@ while step <= config["total_env_steps"]:
     if config["evaluate"] and (
         iteration % config["evaluate_every_n_iterations"] == 0 or iteration == 1
     ):
-        record = False
-        if (
-            iteration % config["record_every_n_iterations"] == 0 or iteration == 1
-        ) and config["animate"]:
-            record = True
+        record = True if record_this_iteration and config["animate"] else False
         eval_results = evalue_adaptive_models(
             policynet,
             transitionnet,

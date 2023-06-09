@@ -73,16 +73,16 @@ transition:
       num_ff_layers: 1
 
 # training parameters
-memory_size: 3_000
-total_env_steps: 60_000
+memory_size: 2_000
+total_env_steps: 40_000
 episodes_per_iteration: 20
 evaluate: True
-evaluate_every_n_iterations: 15
+evaluate_every_n_iterations: 10
 
 # plotting parameters
 animate: True
-animate_unroll: 10
-record_every_n_iterations: 15
+animate_unroll: 5
+record_every_n_iterations: 20
 record_first_n_episodes: 5
 
 # logging parameters

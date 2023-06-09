@@ -41,7 +41,7 @@ policy:
       lowerBoundL2Strength: 0.0
       upperBoundL2Strength: 1.0
       weightL2Strength: 0.0
-      connection_dims: null
+      connection_dims: 0
       nu: 50
       activation_kwargs:
         act_fn: sigmoidspike

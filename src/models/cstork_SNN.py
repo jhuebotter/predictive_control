@@ -376,7 +376,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
             store_sequences = ['out', 'mem']
         )
 
-        if connection_dims is None:
+        if connection_dims in [None, 0]:
             connection_class = Connection
             connection_kwargs = dict(
                 bias = True,

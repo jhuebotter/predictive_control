@@ -12,6 +12,7 @@ from src.utils import (
     dict_mean,
     load_weights_from_disk,
     update_dict,
+    convert_figs_to_wandb_images
 )
 from src.training_functions import (
     train_policynetSNN,
@@ -298,6 +299,9 @@ while step <= config["total_env_steps"]:
     summary = dict(**iteration_results, **config)
     logger.save_summary(summary)
 
+    # convert figures to wandb images
+    convert_figs_to_wandb_images(iteration_results)
+    # report and log the results
     print()
     for k, v in iteration_results.items():
         try:

@@ -5,6 +5,27 @@ import numpy as np
 from .extratyping import *
 import collections
 from control_stork import activations
+import matplotlib.figure
+import wandb
+
+
+def convert_figs_to_wandb_images(d: dict):
+
+    for key, value in d.items():
+        if isinstance(value, dict):
+            # If the value is a dict, we recursively process it
+            convert_figs_to_wandb_images(value)
+        elif isinstance(value, matplotlib.figure.Figure):
+            # If the value is a matplotlib Figure, we convert it to a wandb.Image
+            d[key] = wandb.Image(value)
+        elif isinstance(value, list):
+            # If the value is a list, we check each element in the list
+            for i, v in enumerate(value):
+                if isinstance(v, matplotlib.figure.Figure):
+                    value[i] = wandb.Image(v)
+                elif isinstance(v, dict):
+                    # If the list element is a dict, we recursively process it
+                    convert_figs_to_wandb_images(v)
 
 
 def save_checkpoint(model: Module, optimizer: Optional[Optimizer] = None, path: str = "model_checkpoint.cpt", **kwargs) -> None:

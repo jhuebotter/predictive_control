@@ -591,3 +591,7 @@ class PolicyNetRSNN_cstork(torch.nn.Module):
         self.basis.to(device)
         super().to(device)
         return self
+    
+    def count_parameters(self):
+
+        return self.basis.count_parameters()

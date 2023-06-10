@@ -26,6 +26,10 @@ class StatefulModel(Module):
     def update_state(self, h: Tensor) -> None:
         self.h = h
 
+    def count_parameters(self):
+        # TODO: check if this counts MaskedTensor parameters correctly
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
 
 class AdaptiveModel(StatefulModel):
     def __init__(self):

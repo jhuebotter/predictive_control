@@ -268,6 +268,8 @@ while step <= config["total_env_steps"]:
         "iteration": iteration,
         "policynet updates": policynet_updates,
         "transitionnet updates": transitionnet_updates,
+        "policynet learnable parameters": policynet.count_parameters(),
+        "transitionnet learnable parameters": transitionnet.count_parameters(),
     }
     iteration_results = dict(
         **policy_results, **baseline_results, **data, **rewards

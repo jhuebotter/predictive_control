@@ -15,7 +15,7 @@ from src.utils import (
     convert_figs_to_wandb_images
 )
 from src.training_functions import (
-    train_policynetSNN,
+    train_transitionnetSNN,
     baseline_prediction,
 )
 from src.plotting import render_video, animate_predictions
@@ -40,7 +40,7 @@ parser.add_argument(
     default="",
 )
 parser.add_argument(
-    "--config", help="name of the config file", type=str, default="config_snn_pol_cstork.yaml"
+    "--config", help="name of the config file", type=str, default="config_snn_trans_cstork.yaml"
 )
 args, left_argv = parser.parse_known_args()
 
@@ -80,15 +80,15 @@ transitionnet = make_transition_model(env, transition_config.get("model", {})).t
 policynet = make_policy_model(env, policy_config.get("model", {})).to(device)
 
 # initialize the optimizers
-opt_policy = make_optimizer(policynet.basis, policy_config.get("optim", {}))
+opt_trans = make_optimizer(policynet.basis, policy_config.get("optim", {}))
 
 # load model and other things from checkpoint
-transitionnet, opt_trans = load_weights_from_disk(
-        transitionnet,
-        Path("transitionnet_baseline.cpt"),
-        device = device,
-    )
-print('transitionnet parameters loaded')
+#policynet, opt_policy = load_weights_from_disk(
+#        policynet,
+#        Path("policynet_baseline.cpt"),
+#        device = device,
+#    )
+#print('policynet parameters loaded')
 
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -225,11 +225,13 @@ while step <= config["total_env_steps"]:
 
     # render video and save to disk
     if len(frames) and config["animate"]:
+        print("rendering episode video")
         render_video(
             frames,
             env.metadata["render_fps"],
             save=Path(run_dir, f"episode_animation_{iteration}.mp4"),
         )
+        print("rendering prediction video")
         animate_predictions(
             episode,
             transitionnet,
@@ -250,16 +252,15 @@ while step <= config["total_env_steps"]:
             step=iteration,
         )
 
-    policy_results = train_policynetSNN(
-        policynet,
-        transitionnet,
-        memory,
-        opt_policy,
-        loss_gain=env.loss_gain,
+    # train the transition model
+    transition_results = train_transitionnetSNN(
+        transitionnet, 
+        memory, 
+        opt_trans,
         exclude_monitors=['PlotStateMonitor'] if not record_this_iteration else [],
-        **policy_config["learning"]["params"],
+        **transition_config["learning"]["params"]
     )
-    policynet_updates += policy_config["learning"]["params"]["n_batches"]
+    transitionnet_updates += transition_config["learning"]["params"]["n_batches"]
 
     # log the iteration results
     data = {
@@ -272,7 +273,7 @@ while step <= config["total_env_steps"]:
         "transitionnet learnable parameters": transitionnet.count_parameters(),
     }
     iteration_results = dict(
-        **policy_results, **baseline_results, **data, **rewards
+        **transition_results, **baseline_results, **data, **rewards
     )
 
     # evaluate if necessary
@@ -297,6 +298,22 @@ while step <= config["total_env_steps"]:
     summary = dict(**iteration_results, **config)
     logger.save_summary(summary)
 
+    # save the model parameters
+    save_checkpoint(
+        transitionnet,
+        opt_trans,
+        path=Path(run_dir, "transitionnet_latest.cpt"),
+        **iteration_results,
+    )
+    if transition_results["transition model loss"] < best_transition_loss:
+        best_transition_loss = transition_results["transition model loss"]
+        save_checkpoint(
+            transitionnet,
+            opt_trans,
+            path=Path(run_dir, "transitionnet_best.cpt"),
+            **iteration_results,
+        )
+
     # convert figures to wandb images
     convert_figs_to_wandb_images(iteration_results)
     # report and log the results
@@ -307,23 +324,6 @@ while step <= config["total_env_steps"]:
         except:
             continue
     wandb.log(iteration_results, step=iteration)
-
-    # save the model parameters
-
-    save_checkpoint(
-        policynet,
-        opt_policy,
-        path=Path(run_dir, "policynet_latest.cpt"),
-        **iteration_results,
-    )
-    if policy_results["policy model loss"] < best_policy_loss:
-        best_policy_loss = policy_results["policy model loss"]
-        save_checkpoint(
-            policynet,
-            opt_policy,
-            path=Path(run_dir, "policynet_best.cpt"),
-            **iteration_results,
-        )
 
     # iteration complete
     iteration += 1

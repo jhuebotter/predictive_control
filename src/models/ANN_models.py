@@ -99,7 +99,7 @@ class PolicyNetPBAdaptive(AdaptiveModel):
 
         return torch.tanh(mu), logvar
 
-    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False) -> Tensor:
+    def predict(self, state: Tensor, target: Tensor, deterministic: bool = False, record: bool = False) -> Tensor:
 
         mu, logvar = self(state, target)
 
@@ -161,7 +161,7 @@ class TransitionNetPBAdaptive(AdaptiveModel):
 
         return mu, logvar
 
-    def predict(self, state: Tensor, action: Tensor, deterministic: bool = False) -> Tensor:
+    def predict(self, state: Tensor, action: Tensor, deterministic: bool = False, record: bool = False) -> Tensor:
 
         mu, logvar = self(state, action)
 

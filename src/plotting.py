@@ -1,4 +1,5 @@
 from typing import Union
+from tqdm import tqdm
 import torch
 import numpy as np
 import matplotlib as mlp
@@ -82,6 +83,7 @@ def render_video(frames: list[array], framerate: int = 30, dpi: int = 70,
     anim = animation.FuncAnimation(fig=fig, func=update, frames=frames,
                                    interval=interval, blit=True, repeat=False)
     if save:
+        print(f"Saving animation to {save}")
         anim.save(save)
 
     return anim.to_html5_video()
@@ -173,7 +175,8 @@ def make_predictions(episode: list, transitionnet: Module, unroll: int = 100, wa
     D = observations.shape[-1]
     predictions = torch.zeros((T, warmup + unroll, D))
 
-    for t in range(T):
+    pbar = tqdm(range(T), desc=f"{'rolling out state predictions':30}")
+    for t in pbar:
         transitionnet.reset_state()
 
         for j in range(unroll + warmup):
@@ -236,6 +239,7 @@ def animate_predictions(episode: list, transitionnet: Module, labels: list, unro
     plt.close()
 
     if save:
+        print(f'Saving animation to {save}')
         animation.save(save) #, bitrate=-1)
 
     return animation

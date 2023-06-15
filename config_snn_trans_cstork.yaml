@@ -1,6 +1,6 @@
 # general parameters
 seed: 42
-experiment: dev_policy_snn
+experiment: dev_transition_snn
 
 # task parameters
 task:
@@ -30,11 +30,25 @@ general:
 # policy model parameters
 policy:
   model:
+    type: rnnPBadapt
+    params:
+      activation_kwargs:
+        act_fn: default
+      num_rec_layers: 0
+      num_ff_layers: 2
+  learning:
+    params:
+      deterministic_transition: False
+      beta: 0.0
+
+# transition model parameters
+transition:
+  model:
     type: RSNNcs
     params:
       hidden_dim: 256
-      num_rec_layers: 0
-      num_ff_layers: 2
+      num_rec_layers: 1
+      num_ff_layers: 1
       repeat_input: 8
       out_style: last
       dt: 0.002
@@ -58,19 +72,6 @@ policy:
     type: smorms3
     params:
       lr: 0.0005
-  learning:
-    params:
-      deterministic_transition: False
-
-# transition model parameters
-transition:
-  model:
-    type: rnnPBadapt
-    params:
-      activation_kwargs:
-        act_fn: lrelu
-      num_rec_layers: 1
-      num_ff_layers: 1
 
 # training parameters
 memory_size: 2_000

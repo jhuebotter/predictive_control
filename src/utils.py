@@ -7,6 +7,7 @@ import collections
 from control_stork import activations
 import matplotlib.figure
 import wandb
+from wandb import Image
 
 
 def convert_figs_to_wandb_images(d: dict):
@@ -178,6 +179,9 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
     elif type_ == 'rsnnpb':
         from src.models.SNN_models import TransitionNetRSNNPB
         model = TransitionNetRSNNPB
+    elif type_ == 'rsnncs':
+        from src.models.cstork_SNN import TransitionNetRSNN_cstork
+        model = TransitionNetRSNN_cstork
     else:
         raise NotImplementedError(f"the transition model {type_} is not implemented")
 

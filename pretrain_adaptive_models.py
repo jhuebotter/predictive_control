@@ -12,6 +12,7 @@ from src.utils import (
     dict_mean,
     load_weights_from_disk,
     update_dict,
+    convert_figs_to_wandb_images
 )
 from src.training_functions import (
     train_policynetPB_sample,
@@ -150,13 +151,15 @@ while step <= config["total_env_steps"]:
     baseline_predictions = []
     rewards = []
 
+    record_this_iteration = (
+        iteration % config["record_every_n_iterations"] == 0 or iteration == 1
+    )
+
     for e in tqdm(
         range(1, config["episodes_per_iteration"] + 1),
         desc=f"{'obtaining experience':30}",
     ):
-        if e < config["record_first_n_episodes"] + 1 and (
-            iteration % config["record_every_n_iterations"] == 0 or iteration == 1
-        ):
+        if e < config["record_first_n_episodes"] + 1 and record_this_iteration:
             render_mode = "rgb_array"
         else:
             render_mode = None
@@ -233,11 +236,13 @@ while step <= config["total_env_steps"]:
 
     # render video and save to disk
     if len(frames) and config["animate"]:
+        print("rendering episode video")
         render_video(
             frames,
             env.metadata["render_fps"],
             save=Path(run_dir, f"episode_animation_{iteration}.mp4"),
         )
+        print("rendering prediction video")
         animate_predictions(
             episode,
             transitionnet,
@@ -281,6 +286,8 @@ while step <= config["total_env_steps"]:
         "iteration": iteration,
         "policynet updates": policynet_updates,
         "transitionnet updates": transitionnet_updates,
+        "policynet learnable parameters": policynet.count_parameters(),
+        "transitionnet learnable parameters": transitionnet.count_parameters(),
     }
     iteration_results = dict(
         **transition_results, **policy_results, **baseline_results, **data, **rewards
@@ -290,11 +297,7 @@ while step <= config["total_env_steps"]:
     if config["evaluate"] and (
         iteration % config["evaluate_every_n_iterations"] == 0 or iteration == 1
     ):
-        record = False
-        if (
-            iteration % config["record_every_n_iterations"] == 0 or iteration == 1
-        ) and config["animate"]:
-            record = True
+        record = True if record_this_iteration and config["animate"] else False
         eval_results = evalue_adaptive_models(
             policynet,
             transitionnet,
@@ -311,14 +314,6 @@ while step <= config["total_env_steps"]:
     # save stuff to .csv
     summary = dict(**iteration_results, **config)
     logger.save_summary(summary)
-
-    print()
-    for k, v in iteration_results.items():
-        try:
-            print(f"{k:30}: {v:.3e}")
-        except:
-            continue
-    wandb.log(iteration_results, step=iteration)
 
     # save the model parameters
     save_checkpoint(
@@ -349,6 +344,17 @@ while step <= config["total_env_steps"]:
             path=Path(run_dir, "policynet_best.cpt"),
             **iteration_results,
         )
+
+    # convert figures to wandb images
+    convert_figs_to_wandb_images(iteration_results)
+    # report and log the results
+    print()
+    for k, v in iteration_results.items():
+        try:
+            print(f"{k:30}: {v:.3e}")
+        except:
+            continue
+    wandb.log(iteration_results, step=iteration)
 
     # iteration complete
     iteration += 1

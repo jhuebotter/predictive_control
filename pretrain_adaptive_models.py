@@ -17,6 +17,7 @@ from src.utils import (
 from src.training_functions import (
     train_policynetPB_sample,
     train_transitionnetRNNPBNLL_sample_unroll,
+    train_transitionnetRNNPBNLL_sample,
     baseline_prediction,
 )
 from src.plotting import render_video, animate_predictions
@@ -28,6 +29,7 @@ import wandb
 from evalue_adaptive_models import evalue_adaptive_models
 import copy
 import time
+import matplotlib.pyplot as plt
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -152,6 +154,11 @@ unroll = config["animate_unroll"]
 action_min = torch.tensor(env.action_space.low, device=device)
 action_max = torch.tensor(env.action_space.high, device=device)
 
+if transition_config.get("learning", {}).get("params", {}).get("autoregressive", False):
+    transition_learning_fn = train_transitionnetRNNPBNLL_sample_unroll
+else:
+    transition_learning_fn = train_transitionnetRNNPBNLL_sample
+
 while step <= config["total_env_steps"]:
     # record a bunch of episodes to memory
     print()
@@ -274,7 +281,7 @@ while step <= config["total_env_steps"]:
         )
 
     # update transition and policy models based on data in memory
-    transition_results = train_transitionnetRNNPBNLL_sample_unroll(
+    transition_results = transition_learning_fn(
         transitionnet, memory, opt_trans, **transition_config["learning"]["params"]
     )
     transitionnet_updates += transition_config["learning"]["params"]["n_batches"]
@@ -368,5 +375,6 @@ while step <= config["total_env_steps"]:
 
     # iteration complete
     iteration += 1
+    plt.close("all")
 
 env.close()

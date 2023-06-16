@@ -26,6 +26,8 @@ import argparse
 import wandb
 from evalue_adaptive_models import evalue_adaptive_models
 import copy
+import matplotlib.pyplot as plt
+
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -326,6 +328,8 @@ while step <= config["total_env_steps"]:
     wandb.log(iteration_results, step=iteration)
 
     # iteration complete
-    iteration += 1
+    iteration += 1    
+    plt.close("all")
+
 
 env.close()

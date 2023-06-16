@@ -52,7 +52,8 @@ transition:
       num_ff_layers: 1
   learning:
     params:
-      unroll_steps: 5
+      autoregressive: False
+      unroll_steps: 20
       warumup_steps: 8
 
 # training parameters

@@ -32,11 +32,14 @@ def train_transitionnetRNNPBNLL_sample(
     vars_std = []
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
-        
         # sample a batch of episodes from memory
-        state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
-            batch_size, memory, warmup_steps, unroll_steps, device
-        )
+        (
+            state_batch,
+            target_batch,
+            action_batch,
+            reward_batch,
+            next_state_batch,
+        ) = sample_batch(batch_size, memory, warmup_steps, unroll_steps, device)
 
         # reset the model
         transition_model.zero_grad(set_to_none=True)
@@ -108,17 +111,20 @@ def train_transitionnetRNNPBNLL_sample_unroll(
     vars_std = []
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
-        # initialize losses
-        loss = torch.zeros(1, device=device)
-
         # sample a batch of episodes from memory
-        state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
-            batch_size, memory, warmup_steps, unroll_steps, device
-        )
+        (
+            state_batch,
+            target_batch,
+            action_batch,
+            reward_batch,
+            next_state_batch,
+        ) = sample_batch(batch_size, memory, warmup_steps, unroll_steps, device)
 
-        # reset and warm up
+        # reset the model
         transition_model.zero_grad(set_to_none=True)
         transition_model.reset_state()
+
+        # warm up
         s_hat_delta_mu, s_hat_delta_logvar = transition_model(
             state_batch[:warmup_steps], action_batch[:warmup_steps]
         )
@@ -139,16 +145,10 @@ def train_transitionnetRNNPBNLL_sample_unroll(
             s_hat_vars[k] = torch.exp(s_hat_delta_logvar)
             s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
 
-            # compare predictions with ground truth
-            loss = loss + F.gaussian_nll_loss(
-                s_hat_mus[k], next_state_batch[warmup_steps+k], s_hat_vars[k]
-            ) / unroll_steps
-
-        # TODO: CHECK IF IT MAKES A DIFFERENCE TO DO THIS STEP BY STEP
         # compare predictions with ground truth
-        #loss = loss + F.gaussian_nll_loss(
-        #    s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars
-        #)
+        loss = F.gaussian_nll_loss(
+            s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars
+        )  # this is equivalent to computing the loss step by step
 
         losses.append(loss.item())
         loss.backward()
@@ -219,9 +219,13 @@ def train_policynetPB_sample(
         reg_loss = torch.zeros(1, device=device)
 
         # sample a batch of episodes from memory
-        state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
-            batch_size, memory, warmup_steps, 0, device
-        )
+        (
+            state_batch,
+            target_batch,
+            action_batch,
+            reward_batch,
+            next_state_batch,
+        ) = sample_batch(batch_size, memory, warmup_steps, 0, device)
 
         # reset the models
         policy_model.zero_grad(set_to_none=True)
@@ -333,13 +337,16 @@ def train_policynetPB_sample2(
 
     pbar = tqdm(range(n_batches), desc=f"{'updating policy network':30}")
     for i in pbar:
-
         loss = torch.zeros(1, device=device)
 
         # get a batch of episodes
-        state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
-            batch_size, memory, warmup_steps, 0, device
-        )
+        (
+            state_batch,
+            target_batch,
+            action_batch,
+            reward_batch,
+            next_state_batch,
+        ) = sample_batch(batch_size, memory, warmup_steps, 0, device)
 
         # reset the models
         policy_model.zero_grad(set_to_none=True)
@@ -437,20 +444,26 @@ def train_transitionnetSNN(
         reg_loss = torch.zeros(1, device=device)
 
         # get a batch of episodes
-        state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
-            batch_size, memory, warmup_steps, unroll_steps, device
-        )
+        (
+            state_batch,
+            target_batch,
+            action_batch,
+            reward_batch,
+            next_state_batch,
+        ) = sample_batch(batch_size, memory, warmup_steps, unroll_steps, device)
 
         # reset the model
         transition_model.zero_grad(set_to_none=True)
         transition_model.reset_state()
 
         # time the forward pass
-        #start = time.time()
-        
+        # start = time.time()
+
         # warm up the model
         if warmup_steps > 0:
-            _ = transition_model(state_batch[:warmup_steps], action_batch[:warmup_steps])
+            _ = transition_model(
+                state_batch[:warmup_steps], action_batch[:warmup_steps]
+            )
 
         state = state_batch[warmup_steps]
 
@@ -468,11 +481,11 @@ def train_transitionnetSNN(
             # update the state
             state = next_state_hat
 
-        #forward_time = time.time() - start
-        #print(f"forward time: {forward_time}")
+        # forward_time = time.time() - start
+        # print(f"forward time: {forward_time}")
 
         # time the backward pass
-        #start = time.time()        
+        # start = time.time()
 
         # compute the total loss, record, and backprop
         prediction_loss = prediction_loss / unroll_steps
@@ -488,8 +501,8 @@ def train_transitionnetSNN(
         clipped_grad_norms.append(gradnorm(transition_model))
         optimizer.step()
 
-        #backward_time = time.time() - start
-        #print(f"backward time: {backward_time}")
+        # backward_time = time.time() - start
+        # print(f"backward time: {backward_time}")
 
         pbar.set_postfix_str(f"loss: {loss.item()}")
 
@@ -561,9 +574,13 @@ def train_policynetSNN(
         action_loss = torch.zeros(1, device=device)
 
         # get a batch of episodes
-        state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
-            batch_size, memory, warmup_steps, 0, device
-        )
+        (
+            state_batch,
+            target_batch,
+            action_batch,
+            reward_batch,
+            next_state_batch,
+        ) = sample_batch(batch_size, memory, warmup_steps, 0, device)
 
         # reset the models
         policy_model.zero_grad(set_to_none=True)
@@ -572,7 +589,7 @@ def train_policynetSNN(
         transition_model.reset_state()
 
         # time the forward pass
-        #start = time.time()
+        # start = time.time()
 
         # warm up both models
         _ = policy_model(state_batch[:-1], target_batch[:-1], record=record_policy)
@@ -594,11 +611,11 @@ def train_policynetSNN(
 
             new_state_hat = s_hat
 
-        #forward_time = time.time() - start
-        #print(f"forward time: {forward_time}")
+        # forward_time = time.time() - start
+        # print(f"forward time: {forward_time}")
 
         # time backward pass
-        #start = time.time()
+        # start = time.time()
 
         action_loss = action_loss / unroll_steps
         reg_loss = policy_model.get_reg_loss()
@@ -613,8 +630,8 @@ def train_policynetSNN(
         clipped_grad_norms.append(gradnorm(policy_model))
         optimizer.step()
 
-        #backward_time = time.time() - start
-        #print(f"backward time: {backward_time}")
+        # backward_time = time.time() - start
+        # print(f"backward time: {backward_time}")
 
         pbar.set_postfix_str(f"loss: {loss.item()}")
 

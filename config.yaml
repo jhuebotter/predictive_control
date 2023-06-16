@@ -1,10 +1,10 @@
 # general parameters
 seed: 42
-experiment: rework
+experiment: dev_ann
 
 # task parameters
 task:
-  type: plane
+  type: reacher2
   params:
     max_episode_steps: 200
     render: false
@@ -22,10 +22,8 @@ general:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 30
-      unroll_steps: 10
-      warmup_steps: 8
-      max_norm: 50
+      n_batches: 100
+      max_norm: 30
 
 # policy model parameters
 policy:
@@ -33,11 +31,13 @@ policy:
     type: rnnPBadapt
     params:
       activation_kwargs:
-        act_fn: default
+        act_fn: lrelu
       num_rec_layers: 0
       num_ff_layers: 2
   learning:
     params:
+      unroll_steps: 10
+      warumup_steps: 8
       deterministic_transition: False
       beta: 0.0
 
@@ -47,21 +47,25 @@ transition:
     type: rnnPBadapt
     params:
       activation_kwargs:
-        act_fn: default
+        act_fn: lrelu
       num_rec_layers: 1
       num_ff_layers: 1
+  learning:
+    params:
+      unroll_steps: 5
+      warumup_steps: 8
 
 # training parameters
 memory_size: 3_000
-total_env_steps: 4_000
-episodes_per_iteration: 10
+total_env_steps: 400_000
+episodes_per_iteration: 20
 evaluate: True
 evaluate_every_n_iterations: 10
 
 # plotting parameters
 animate: True
 animate_unroll: 30
-record_every_n_iterations: 50
+record_every_n_iterations: 10
 record_first_n_episodes: 5
 
 # logging parameters

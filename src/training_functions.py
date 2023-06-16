@@ -137,10 +137,11 @@ def train_transitionnetRNNPBNLL_sample_unroll(
             s_hat_vars[k] = torch.exp(s_hat_delta_logvar)
             s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
 
+        # TODO: CHECK IF IT MAKES A DIFFERENCE TO DO THIS STEP BY STEP
         # compare predictions with ground truth
         loss = F.gaussian_nll_loss(
             s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars
-        )
+        ) # this already computes the mean over steps
 
         losses.append(loss.item())
         loss.backward()
@@ -207,8 +208,8 @@ def train_policynetPB_sample(
     pbar = tqdm(range(n_batches), desc=f"{'updating policy network':30}")
     for i in pbar:
         loss = torch.zeros(1, device=device)
-        action_loss_ = torch.zeros(1, device=device)
-        reg_loss_ = torch.zeros(1, device=device)
+        action_loss = torch.zeros(1, device=device)
+        reg_loss = torch.zeros(1, device=device)
 
         # sample a batch of episodes from memory
         state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
@@ -254,9 +255,7 @@ def train_policynetPB_sample(
             # action_loss = torch.distributions.kl_divergence(next_state_dist, target_dist).mean() \
             #              + alpha * torch.distributions.kl_divergence(action_dist, action_target_dist).mean()
 
-            action_loss = torch.mean(torch.pow(t - s_hat, 2) * loss_gain)
-            loss += action_loss
-            action_loss_ += action_loss
+            action_loss += torch.mean(torch.pow(t - s_hat, 2) * loss_gain)
 
             if beta:
                 action_dist = torch.distributions.normal.Normal(a_mu, a_std)
@@ -265,15 +264,17 @@ def train_policynetPB_sample(
                     .mean()
                     .to(device)
                 )
-                reg_loss = beta * action_reg
-                loss += reg_loss
-                reg_loss_ += reg_loss
+                r_loss = beta * action_reg
+                reg_loss += r_loss
 
             new_state_hat = s_hat
 
+        action_loss = action_loss / unroll_steps
+        reg_loss = reg_loss / unroll_steps
+        loss = action_loss + reg_loss
+        action_losses.append(action_loss.item())
+        reg_losses.append(reg_loss.item())
         losses.append(loss.item())
-        action_losses.append(action_loss_.item())
-        reg_losses.append(reg_loss_.item())
         loss.backward()
         grad_norms.append(gradnorm(policy_model))
         if max_norm:
@@ -496,6 +497,7 @@ def train_transitionnetSNN(
     results.update(transition_model.get_monitor_data(exclude=exclude_monitors))
 
     return results
+
 
 def train_policynetSNN(
     policy_model: Module,

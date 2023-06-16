@@ -42,7 +42,7 @@ parser.add_argument(
     default="",
 )
 parser.add_argument(
-    "--config", help="name of the config file", type=str, default="config_snn_pol_cstork.yaml"
+    "--config", help="name of the config file", type=str, default="config.yaml"
 )
 args, left_argv = parser.parse_known_args()
 
@@ -102,6 +102,15 @@ if args.load_dir:
     for pg in opt_policy.param_groups:
         pg.update(config["policy"]["optim"]["params"])
 
+# TODO: THIS IS A HACK AND NEEDS TO BE DELETED LATER:
+# load model and other things from checkpoint
+#policynet, opt_policy = load_weights_from_disk(
+#        policynet,
+#        Path("policynet_test.cpt"),
+#        device = device,
+#    )
+#print('policynet parameters loaded')
+
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
 run_dir = Path(
@@ -112,6 +121,7 @@ run_dir = Path(
     run_id,
 )
 run_dir.mkdir(parents=True)
+print("saving results to", run_dir)
 
 wandb.init(
     config=config, project=config["project"], entity=config["entity"], dir="./results"

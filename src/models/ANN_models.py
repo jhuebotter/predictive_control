@@ -112,7 +112,7 @@ class PolicyNetPBAdaptive(AdaptiveModel):
 class TransitionNetPBAdaptive(AdaptiveModel):
     """probabilistic RNN transition network"""
 
-    def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_rec_layers: int = 1, num_ff_layers: int = 0,
+    def __init__(self, action_dim: int, state_dim: int, hidden_dim: int, num_rec_layers: int = 1, num_ff_layers: int = 1,
                  bias: bool = True, act_fn: Callable = F.leaky_relu, **kwargs) -> None:
         super().__init__()
 

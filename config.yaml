@@ -1,5 +1,5 @@
 # general parameters
-seed: 42
+seed: 666
 experiment: dev_ann
 
 # task parameters
@@ -36,8 +36,8 @@ policy:
       num_ff_layers: 2
   learning:
     params:
-      unroll_steps: 10
-      warumup_steps: 8
+      unroll_steps: 20
+      warmup_steps: 8
       deterministic_transition: False
       beta: 0.0
 
@@ -53,19 +53,20 @@ transition:
   learning:
     params:
       autoregressive: False
-      unroll_steps: 20
-      warumup_steps: 8
+      unroll_steps: 1
+      warmup_steps: 8
 
 # training parameters
 memory_size: 3_000
 total_env_steps: 400_000
 episodes_per_iteration: 20
 evaluate: True
-evaluate_every_n_iterations: 10
+evaluate_every_n_iterations: 1
+deterministic_action: False
 
 # plotting parameters
 animate: True
-animate_unroll: 30
+animate_unroll: 50
 record_every_n_iterations: 10
 record_first_n_episodes: 5
 

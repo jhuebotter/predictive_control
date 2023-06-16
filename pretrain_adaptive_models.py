@@ -12,7 +12,7 @@ from src.utils import (
     dict_mean,
     load_weights_from_disk,
     update_dict,
-    convert_figs_to_wandb_images
+    convert_figs_to_wandb_images,
 )
 from src.training_functions import (
     train_policynetPB_sample,
@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 
 torch.autograd.set_detect_anomaly(True)
 
-print('Pytorch version', torch.__version__)
+print("Pytorch version", torch.__version__)
 
 # read the directory to be loaded
 parser = argparse.ArgumentParser()
@@ -106,12 +106,12 @@ if args.load_dir:
 
 # TODO: THIS IS A HACK AND NEEDS TO BE DELETED LATER:
 # load model and other things from checkpoint
-#policynet, opt_policy = load_weights_from_disk(
+# policynet, opt_policy = load_weights_from_disk(
 #        policynet,
 #        Path("policynet_test.cpt"),
 #        device = device,
 #    )
-#print('policynet parameters loaded')
+# print('policynet parameters loaded')
 
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -155,8 +155,10 @@ action_min = torch.tensor(env.action_space.low, device=device)
 action_max = torch.tensor(env.action_space.high, device=device)
 
 if transition_config.get("learning", {}).get("params", {}).get("autoregressive", False):
+    print("using autoregressive transition model")
     transition_learning_fn = train_transitionnetRNNPBNLL_sample_unroll
 else:
+    print("using non-autoregressive transition model")
     transition_learning_fn = train_transitionnetRNNPBNLL_sample
 
 while step <= config["total_env_steps"]:
@@ -182,7 +184,6 @@ while step <= config["total_env_steps"]:
             render_mode = None
 
         with torch.no_grad():
-
             # reset the environment
             observation, target = env.reset()
             observation = torch.tensor(observation, device=device, dtype=torch.float32)
@@ -196,11 +197,12 @@ while step <= config["total_env_steps"]:
             total_reward = 0.0
             done = False
             while not done:
-
                 # chose action and advance simulation
                 action = policynet.predict(
-                    observation.view(1, 1, -1), target.view(1, 1, -1), 
-                    deterministic = True, record = True
+                    observation.view(1, 1, -1),
+                    target.view(1, 1, -1),
+                    deterministic=config.get("deterministic_action", False),
+                    record=True,
                 ).flatten()
 
                 a = action.flatten().detach().clip(action_min, action_max)

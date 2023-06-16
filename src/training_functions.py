@@ -108,6 +108,8 @@ def train_transitionnetRNNPBNLL_sample_unroll(
     vars_std = []
     pbar = tqdm(range(n_batches), desc=f"{'updating transition network':30}")
     for i in pbar:
+        # initialize losses
+        loss = torch.zeros(1, device=device)
 
         # sample a batch of episodes from memory
         state_batch, target_batch, action_batch, reward_batch, next_state_batch = sample_batch(
@@ -137,11 +139,16 @@ def train_transitionnetRNNPBNLL_sample_unroll(
             s_hat_vars[k] = torch.exp(s_hat_delta_logvar)
             s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
 
+            # compare predictions with ground truth
+            loss = loss + F.gaussian_nll_loss(
+                s_hat_mus[k], next_state_batch[warmup_steps+k], s_hat_vars[k]
+            ) / unroll_steps
+
         # TODO: CHECK IF IT MAKES A DIFFERENCE TO DO THIS STEP BY STEP
         # compare predictions with ground truth
-        loss = F.gaussian_nll_loss(
-            s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars
-        ) # this already computes the mean over steps
+        #loss = loss + F.gaussian_nll_loss(
+        #    s_hat_mus, next_state_batch[warmup_steps:], s_hat_vars
+        #)
 
         losses.append(loss.item())
         loss.backward()

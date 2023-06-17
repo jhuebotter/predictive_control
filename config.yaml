@@ -21,7 +21,7 @@ general:
       lr: 0.0005
   learning:
     params:
-      batch_size: 1_024
+      batch_size: 8
       n_batches: 100
       max_norm: 30
 
@@ -52,7 +52,7 @@ transition:
       num_ff_layers: 1
   learning:
     params:
-      autoregressive: False
+      autoregressive: True
       unroll_steps: 1
       warmup_steps: 8
 

@@ -156,10 +156,11 @@ action_max = torch.tensor(env.action_space.high, device=device)
 
 if transition_config.get("learning", {}).get("params", {}).get("autoregressive", False):
     print("using autoregressive transition model")
-    transition_learning_fn = train_transitionnetRNNPBNLL_sample_unroll
+#    transition_learning_fn = train_transitionnetRNNPBNLL_sample_unroll
 else:
     print("using non-autoregressive transition model")
-    transition_learning_fn = train_transitionnetRNNPBNLL_sample
+#    transition_learning_fn = train_transitionnetRNNPBNLL_sample
+transition_learning_fn = train_transitionnetRNNPBNLL_sample_unroll
 
 while step <= config["total_env_steps"]:
     # record a bunch of episodes to memory

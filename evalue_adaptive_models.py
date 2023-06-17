@@ -187,6 +187,7 @@ def evalue_adaptive_models(
             transitionnet,
             env.state_labels,
             unroll=unroll,
+            warmup=warmup,
             save=Path(run_dir, f"prediction_animation_eval_{step}_{e}.mp4"),
         )
         results.update(

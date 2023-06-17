@@ -148,6 +148,7 @@ class TransitionNetPBAdaptive(AdaptiveModel):
         if len(action.shape) == 2:
             action.unsqueeze_(0)
 
+        # pytorch GRU expects input of shape (T, N, D)
         x = torch.cat((state, action), -1)
         for name, layer in self.basis.items():
             if 'gru' in name.lower():

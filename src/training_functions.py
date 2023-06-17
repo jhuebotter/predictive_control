@@ -13,9 +13,9 @@ def train_transitionnetRNNPBNLL_sample(
     memory: ReplayMemory,
     optimizer: torch.optim.Optimizer,
     batch_size: int,
-    warmup_steps: int = 20,
+    warmup_steps: int = 10,
     n_batches: int = 1,
-    unroll_steps: int = 20,
+    unroll_steps: int = 1,
     max_norm: Optional[float] = None,
     **kwargs,
 ):
@@ -92,10 +92,11 @@ def train_transitionnetRNNPBNLL_sample_unroll(
     memory: ReplayMemory,
     optimizer: torch.optim.Optimizer,
     batch_size: int,
-    warmup_steps: int = 20,
+    warmup_steps: int = 10,
     n_batches: int = 1,
-    unroll_steps: int = 20,
+    unroll_steps: int = 1,
     max_norm: Optional[float] = None,
+    autoregressive: bool = False,
     **kwargs,
 ):
     """function used to update the parameters of a probabilistic transition network"""
@@ -130,20 +131,23 @@ def train_transitionnetRNNPBNLL_sample_unroll(
         )
         s_hat = state_batch[warmup_steps]
 
-        state_dim = state_batch.shape[-1]
-
         # make a container for the predictions to go in
+        state_dim = state_batch.shape[-1]
         s_hat_mus = torch.empty((unroll_steps, batch_size, state_dim), device=device)
         s_hat_vars = torch.empty((unroll_steps, batch_size, state_dim), device=device)
 
         # autoregressive prediction
         for k in range(unroll_steps):
+            if autoregressive and k > 0:
+                s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
+            else:
+                s_hat = state_batch[warmup_steps+k]
+        
             s_hat_delta_mu, s_hat_delta_logvar = transition_model(
                 s_hat, action_batch[warmup_steps + k]
             )
             s_hat_mus[k] = s_hat + s_hat_delta_mu
             s_hat_vars[k] = torch.exp(s_hat_delta_logvar)
-            s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
 
         # compare predictions with ground truth
         loss = F.gaussian_nll_loss(

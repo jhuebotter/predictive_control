@@ -196,6 +196,7 @@ def make_transition_model(env: gym.Env, config: dict, verbose: bool = True) -> M
 
     return transitionnet
 
+
 def make_policy_model(env: gym.Env, config: dict, verbose: bool = True) -> Module:
     """create a policy network according to the parameters specified by the config file and task"""
     
@@ -266,6 +267,38 @@ def make_policy_adaptation_model(env: gym.Env, config: dict, verbose: bool = Tru
     if verbose: print(policynet)
 
     return policynet
+
+
+def make_train_fn(config: dict, model: str) -> Callable:
+    """create a training function according to the parameters specified by the config file"""
+
+    assert model.lower() in ['policy', 'transition'], f"the model {model} is not implemented"
+    type_ = config.get('model', {}).get('type', '').lower()
+    train_fn = None
+    
+    if model.lower() == 'policy':
+
+        if type_ in ['rnnpbadapt']:
+            from src.training_functions import train_policynetPB_sample
+            train_fn = train_policynetPB_sample
+        elif type_ in ['rsnncs']:
+            from src.training_functions import train_policynetSNN
+            train_fn = train_policynetSNN
+        else:
+            raise NotImplementedError(f"the training function for policy model {type_} is not implemented")
+
+    elif model.lower() == 'transition':
+
+        if type_ in ['rnnpbadapt']:
+            from src.training_functions import train_transitionnetRNNPBNLL_sample_unroll
+            train_fn = train_transitionnetRNNPBNLL_sample_unroll
+        elif type_ in ['rsnncs']:
+            from src.training_functions import train_transitionnetSNN
+            train_fn = train_transitionnetSNN
+        else:
+            raise NotImplementedError(f"the training function for transition model {type_} is not implemented")
+
+    return train_fn
 
 
 def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimizer:

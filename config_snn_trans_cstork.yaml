@@ -22,9 +22,7 @@ general:
   learning:
     params:
       batch_size: 1_024
-      n_batches: 10
-      unroll_steps: 5
-      warmup_steps: 5
+      n_batches: 100
       max_norm: 50
 
 # policy model parameters
@@ -38,6 +36,8 @@ policy:
       num_ff_layers: 2
   learning:
     params:
+      unroll_steps: 20
+      warmup_steps: 10
       deterministic_transition: False
       beta: 0.0
 
@@ -46,7 +46,7 @@ transition:
   model:
     type: RSNNcs
     params:
-      hidden_dim: 256
+      hidden_dim: 1024
       num_rec_layers: 1
       num_ff_layers: 1
       repeat_input: 8
@@ -72,17 +72,22 @@ transition:
     type: smorms3
     params:
       lr: 0.0005
+  learning:
+    params:
+      autoregressive: True
+      unroll_steps: 1
+      warmup_steps: 8
 
 # training parameters
 memory_size: 2_000
-total_env_steps: 4_000
-episodes_per_iteration: 10
+total_env_steps: 200_000
+episodes_per_iteration: 25
 evaluate: True
 evaluate_every_n_iterations: 1
 
 # plotting parameters
 animate: False
-animate_unroll: 5
+animate_unroll: 10
 record_every_n_iterations: 20
 record_first_n_episodes: 5
 

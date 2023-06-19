@@ -7,6 +7,7 @@ from src.utils import (
     make_env,
     make_transition_model,
     make_policy_model,
+    make_train_fn,
     make_optimizer,
     save_checkpoint,
     dict_mean,
@@ -14,12 +15,7 @@ from src.utils import (
     update_dict,
     convert_figs_to_wandb_images,
 )
-from src.training_functions import (
-    train_policynetPB_sample,
-    train_transitionnetRNNPBNLL_sample_unroll,
-    train_transitionnetRNNPBNLL_sample,
-    baseline_prediction,
-)
+from src.training_functions import baseline_prediction
 from src.plotting import render_video, animate_predictions
 from src.config import get_config, save_config
 from src.logger import PandasLogger
@@ -44,7 +40,7 @@ parser.add_argument(
     default="",
 )
 parser.add_argument(
-    "--config", help="name of the config file", type=str, default="config.yaml"
+    "--config", help="name of the config file", type=str, default="config_snn.yaml"
 )
 args, left_argv = parser.parse_known_args()
 
@@ -104,14 +100,9 @@ if args.load_dir:
     for pg in opt_policy.param_groups:
         pg.update(config["policy"]["optim"]["params"])
 
-# TODO: THIS IS A HACK AND NEEDS TO BE DELETED LATER:
-# load model and other things from checkpoint
-# policynet, opt_policy = load_weights_from_disk(
-#        policynet,
-#        Path("policynet_test.cpt"),
-#        device = device,
-#    )
-# print('policynet parameters loaded')
+# make training functions
+transition_train_fn = make_train_fn(transition_config, "transition")
+policy_train_fn = make_train_fn(policy_config, "policy")
 
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -153,14 +144,6 @@ unroll = config["animate_unroll"]
 
 action_min = torch.tensor(env.action_space.low, device=device)
 action_max = torch.tensor(env.action_space.high, device=device)
-
-if transition_config.get("learning", {}).get("params", {}).get("autoregressive", False):
-    print("using autoregressive transition model")
-#    transition_learning_fn = train_transitionnetRNNPBNLL_sample_unroll
-else:
-    print("using non-autoregressive transition model")
-#    transition_learning_fn = train_transitionnetRNNPBNLL_sample
-transition_learning_fn = train_transitionnetRNNPBNLL_sample_unroll
 
 while step <= config["total_env_steps"]:
     # record a bunch of episodes to memory
@@ -284,17 +267,23 @@ while step <= config["total_env_steps"]:
         )
 
     # update transition and policy models based on data in memory
-    transition_results = transition_learning_fn(
-        transitionnet, memory, opt_trans, **transition_config["learning"]["params"]
+    transition_results = transition_train_fn(
+        transitionnet,
+        memory,
+        opt_trans,
+        exclude_monitors=["PlotStateMonitor"] if not record_this_iteration else [],
+        record_transition=record_this_iteration,
+        **transition_config["learning"]["params"],
     )
     transitionnet_updates += transition_config["learning"]["params"]["n_batches"]
 
-    policy_results = train_policynetPB_sample(
+    policy_results = policy_train_fn(
         policynet,
         transitionnet,
         memory,
         opt_policy,
         loss_gain=env.loss_gain,
+        exclude_monitors=["PlotStateMonitor"] if not record_this_iteration else [],
         **policy_config["learning"]["params"],
     )
     policynet_updates += policy_config["learning"]["params"]["n_batches"]

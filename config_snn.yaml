@@ -1,10 +1,10 @@
 # general parameters
 seed: 42
-experiment: debug_snn
+experiment: dev_double_snn
 
 # task parameters
 task:
-  type: plane
+  type: reacher2
   params:
     max_episode_steps: 200
     render: false
@@ -14,59 +14,70 @@ task:
 general:
   model:
     params:
-      hidden_dim: 256
-      repeat_input: 5
+      hidden_dim: 512
+      dt: 0.002
+      nu: 50
       out_style: last
-      dt: 0.004
+      lowerBoundL2Strength: 0.0
+      upperBoundL2Strength: 1.0
+      weightL2Strength: 0.0
+      repeat_input: 8
+      activation_kwargs:
+        act_fn: sigmoidspike
+        beta: 100.0
       flif_kwargs:
-        train_V_tau: True
-        train_I_tau: True
+        reset: sub
       readout_kwargs:
-        train_V_tau: True
-        train_I_tau: True
+        n_pop: 50
   optim:
-    type: adam
+    type: smorms3
     params:
       lr: 0.0005
   learning:
     params:
-      batch_size: 1_024
-      n_batches: 30
-      unroll_steps: 10
-      warmup_steps: 8
+      batch_size: 512
+      n_batches: 100
       max_norm: 50
+      warmup_steps: 8
 
 # policy model parameters
 policy:
   model:
-    type: RSNNPB
+    type: RSNNcs
     params:
       num_rec_layers: 0
       num_ff_layers: 2
+      connection_dims: 0
   learning:
     params:
-      deterministic_transition: False
-      beta: 0.0
+      unroll_steps: 20
+      deterministic_transition: True
 
 # transition model parameters
 transition:
   model:
-    type: RSNNPB
+    type: RSNNcs
     params:
       num_rec_layers: 1
       num_ff_layers: 1
+      connection_dims: 0
+  learning:
+    params:
+      autoregressive: True
+      unroll_steps: 1
 
 # training parameters
-memory_size: 3_000
-total_env_steps: 4_000
-episodes_per_iteration: 10
+memory_size: 2_000
+total_env_steps: 200_000
+episodes_per_iteration: 25
 evaluate: True
-evaluate_every_n_iterations: 10
+evaluate_every_n_iterations: 1
+deterministic_action: True
 
 # plotting parameters
 animate: False
-animate_unroll: 30
-record_every_n_iterations: 50
+animate_unroll: 20
+record_every_n_iterations: 20
 record_first_n_episodes: 5
 
 # logging parameters

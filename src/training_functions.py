@@ -21,6 +21,8 @@ def train_transitionnetRNNPBNLL_sample(
 ):
     """function used to update the parameters of a probabilistic transition network"""
 
+    # TODO: I do not know why this is not doing what I want it to and gives different results than the other function
+
     device = next(transition_model.parameters()).device
 
     losses = []
@@ -408,9 +410,11 @@ def train_transitionnetSNN(
     batch_size: int,
     warmup_steps: int = 10,
     n_batches: int = 1,
-    unroll_steps: int = 10,
+    unroll_steps: int = 1,
     max_norm: Optional[float] = None,
+    record_transition: bool = True,
     exclude_monitors: list = [],
+    autoregressive: bool = False,
     **kwargs,
 ) -> dict:
     """
@@ -445,7 +449,6 @@ def train_transitionnetSNN(
         # initialize losses
         loss = torch.zeros(1, device=device)
         prediction_loss = torch.zeros(1, device=device)
-        reg_loss = torch.zeros(1, device=device)
 
         # get a batch of episodes
         (
@@ -466,7 +469,7 @@ def train_transitionnetSNN(
         # warm up the model
         if warmup_steps > 0:
             _ = transition_model(
-                state_batch[:warmup_steps], action_batch[:warmup_steps]
+                state_batch[:warmup_steps], action_batch[:warmup_steps], record=record_transition
             )
 
         state = state_batch[warmup_steps]
@@ -476,14 +479,24 @@ def train_transitionnetSNN(
             next_state = next_state_batch[warmup_steps + k]
 
             # predict the next state
-            next_state_delta_hat = transition_model.predict(state, action)
+            next_state_delta_hat = transition_model.predict(state, action, record=record_transition)
             next_state_hat = next_state_delta_hat + state
 
             # compute the prediction loss
             prediction_loss += torch.mean(torch.pow(next_state - next_state_hat, 2))
+            # prediction_loss += torch.sum(torch.abs(next_state - next_state_hat))
+
+            # compare predictions with ground truth
+            #loss = F.gaussian_nll_loss(
+            #    next_state_hat, next_state, torch.ones_like(next_state_hat) * 0.01
+            #)  # this is equivalent to computing the loss step by step
+
 
             # update the state
-            state = next_state_hat
+            if autoregressive:
+                state = next_state_hat
+            else:
+                state = next_state
 
         # forward_time = time.time() - start
         # print(f"forward time: {forward_time}")
@@ -511,7 +524,7 @@ def train_transitionnetSNN(
         pbar.set_postfix_str(f"loss: {loss.item()}")
 
     results = {
-        "transition model action loss": np.mean(prediction_losses),
+        "transition model prediction loss": np.mean(prediction_losses),
         "transition model reg loss": np.mean(reg_losses),
         "transition model loss": np.mean(losses),
         "transition model grad norm": np.mean(grad_norms),
@@ -567,7 +580,6 @@ def train_policynetSNN(
     reg_losses = []
     losses = []
     loss_gain = torch.tensor(loss_gain).to(device)
-
     grad_norms = []
     clipped_grad_norms = []
 

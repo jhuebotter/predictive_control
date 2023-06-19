@@ -82,15 +82,15 @@ transitionnet = make_transition_model(env, transition_config.get("model", {})).t
 policynet = make_policy_model(env, policy_config.get("model", {})).to(device)
 
 # initialize the optimizers
-opt_trans = make_optimizer(policynet.basis, policy_config.get("optim", {}))
+opt_trans = make_optimizer(transitionnet.basis, transition_config.get("optim", {}))
 
 # load model and other things from checkpoint
-#policynet, opt_policy = load_weights_from_disk(
-#        policynet,
-#        Path("policynet_baseline.cpt"),
-#        device = device,
-#    )
-#print('policynet parameters loaded')
+policynet, opt_policy = load_weights_from_disk(
+        policynet,
+        Path("policynet_baseline.cpt"),
+        device = device,
+    )
+print('policynet parameters loaded')
 
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -260,6 +260,7 @@ while step <= config["total_env_steps"]:
         memory, 
         opt_trans,
         exclude_monitors=['PlotStateMonitor'] if not record_this_iteration else [],
+        record_transition=record_this_iteration,
         **transition_config["learning"]["params"]
     )
     transitionnet_updates += transition_config["learning"]["params"]["n_batches"]

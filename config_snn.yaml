@@ -1,6 +1,6 @@
 # general parameters
-seed: 42
-experiment: dev_double_snn
+seed: 777
+experiment: dev_double_snn_baseline
 
 # task parameters
 task:
@@ -15,6 +15,22 @@ general:
   model:
     params:
       hidden_dim: 512
+  optim:
+    type: adam
+    params:
+      lr: 0.0005
+  learning:
+    params:
+      batch_size: 512
+      n_batches: 25
+      max_norm: 30
+      warmup_steps: 5
+
+# policy model parameters
+policy:
+  model:
+    type: RSNNcs
+    params:
       dt: 0.002
       nu: 50
       out_style: last
@@ -24,27 +40,11 @@ general:
       repeat_input: 8
       activation_kwargs:
         act_fn: sigmoidspike
-        beta: 100.0
+        beta: 10.0
       flif_kwargs:
         reset: sub
       readout_kwargs:
-        n_pop: 50
-  optim:
-    type: smorms3
-    params:
-      lr: 0.0005
-  learning:
-    params:
-      batch_size: 512
-      n_batches: 100
-      max_norm: 50
-      warmup_steps: 8
-
-# policy model parameters
-policy:
-  model:
-    type: RSNNcs
-    params:
+        n_pop: 25
       num_rec_layers: 0
       num_ff_layers: 2
       connection_dims: 0
@@ -58,24 +58,38 @@ transition:
   model:
     type: RSNNcs
     params:
+      dt: 0.002
+      nu: 50
+      out_style: last
+      lowerBoundL2Strength: 0.0
+      upperBoundL2Strength: 1.0
+      weightL2Strength: 0.0
+      repeat_input: 8
+      activation_kwargs:
+        act_fn: sigmoidspike
+        beta: 10.0
+      flif_kwargs:
+        reset: sub
+      readout_kwargs:
+        n_pop: 25
       num_rec_layers: 1
       num_ff_layers: 1
       connection_dims: 0
   learning:
     params:
-      autoregressive: True
+      autoregressive: False
       unroll_steps: 1
 
 # training parameters
-memory_size: 2_000
-total_env_steps: 200_000
+memory_size: 1_000
+total_env_steps: 500_000
 episodes_per_iteration: 25
 evaluate: True
 evaluate_every_n_iterations: 1
 deterministic_action: True
 
 # plotting parameters
-animate: False
+animate: True
 animate_unroll: 20
 record_every_n_iterations: 20
 record_first_n_episodes: 5

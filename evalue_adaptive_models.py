@@ -161,7 +161,12 @@ def evalue_adaptive_models(
         rewards.append({"mean episode reward eval": total_reward})
         # compute prediction performance against baseline
         baseline_predictions.append(
-            baseline_prediction(transitionnet, episode, warmup=warmup)
+            baseline_prediction(
+            transitionnet, 
+            episode, 
+            warmup=warmup,
+            unroll=unroll
+            )
         )
         episodes.append(episode)
 

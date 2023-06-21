@@ -665,23 +665,45 @@ def train_policynetSNN(
 
 
 @torch.no_grad()
-def baseline_prediction(transitionnet: Module, episode: list, warmup: int = 0) -> dict:
+def baseline_prediction(transitionnet: Module, episode: list, warmup: int = 0, unroll: int = 1, max_samples: int = 10) -> dict:
     """function used to evaluate transition network predictions against baseline values"""
 
-    transitionnet.reset_state()
     T = len(episode)
 
     states = torch.stack([step[0] for step in episode]).view((T, 1, -1))
     actions = torch.stack([step[2] for step in episode]).view((T, 1, -1))
     next_states = torch.stack([step[4] for step in episode]).view((T, 1, -1))
 
+    device = states.device
+
     # predict next state based on action with transition net
+    transitionnet.reset_state()
     delta_states = transitionnet.predict(states, actions, deterministic=True)
     predicted_states = states + delta_states.detach()
     predicted_state_mse = torch.pow(
         predicted_states[warmup:] - next_states[warmup:], 2
     ).mean()
     # print("predicted state MSE:", predicted_state_mse.item())
+
+    # unroll transition network predictions
+    steps = T - warmup - unroll
+    unrolled_state_mse = torch.tensor(0.0, device=device)
+    steps = min(steps, max_samples)
+    if steps > 0:
+        for step in range(steps):
+            transitionnet.reset_state()
+            _ = transitionnet.predict(states[step:warmup+step], actions[step:warmup+step], deterministic=True)
+            pred_states = torch.empty((unroll, *states.shape[1:]), device=device)
+            state = states[warmup+step]
+            for i in range(unroll):
+                action = actions[warmup+step+i]
+                delta_states = transitionnet.predict(state, action, deterministic=True)
+                pred_states[i] = state + delta_states.detach()
+                state = pred_states[i]
+                unrolled_state_mse += torch.pow(
+                    pred_states[i] - next_states[warmup+step+i], 2
+                ).mean()
+        unrolled_state_mse.div_(steps)
 
     # use linear extrapolation as a baseline estimate
     previous_deltas = states[1 + warmup :] - states[warmup:-1]
@@ -697,6 +719,7 @@ def baseline_prediction(transitionnet: Module, episode: list, warmup: int = 0) -
 
     return {
         "predicted_state_MSE": predicted_state_mse.item(),
+        "unrolled_state_MSE": unrolled_state_mse.item(),
         "extrapolated_state_MSE": extrapolated_state_mse.item(),
         "current_state_MSE": current_state_mse.item(),
     }

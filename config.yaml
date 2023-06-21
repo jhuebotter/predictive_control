@@ -1,6 +1,6 @@
 # general parameters
-seed: 666
-experiment: dev_ann
+seed: 777
+experiment: dev_ann_baseline
 
 # task parameters
 task:
@@ -14,16 +14,17 @@ task:
 general:
   model:
     params:
-      hidden_dim: 256
+      hidden_dim: 512
   optim:
     type: adam
     params:
       lr: 0.0005
   learning:
     params:
-      batch_size: 1024
-      n_batches: 100
+      batch_size: 512
+      n_batches: 25
       max_norm: 30
+      warmup_steps: 5
 
 # policy model parameters
 policy:
@@ -37,8 +38,7 @@ policy:
   learning:
     params:
       unroll_steps: 20
-      warmup_steps: 8
-      deterministic_transition: False
+      deterministic_transition: True
       beta: 0.0
 
 # transition model parameters
@@ -52,22 +52,21 @@ transition:
       num_ff_layers: 1
   learning:
     params:
-      autoregressive: True
+      autoregressive: False
       unroll_steps: 1
-      warmup_steps: 8
 
 # training parameters
-memory_size: 3_000
-total_env_steps: 400_000
-episodes_per_iteration: 20
+memory_size: 1_000
+total_env_steps: 500_000
+episodes_per_iteration: 25
 evaluate: True
 evaluate_every_n_iterations: 1
 deterministic_action: True
 
 # plotting parameters
-animate: True
-animate_unroll: 50
-record_every_n_iterations: 10
+animate: False
+animate_unroll: 20
+record_every_n_iterations: 20
 record_first_n_episodes: 5
 
 # logging parameters

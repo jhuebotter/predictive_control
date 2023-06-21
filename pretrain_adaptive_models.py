@@ -40,7 +40,7 @@ parser.add_argument(
     default="",
 )
 parser.add_argument(
-    "--config", help="name of the config file", type=str, default="config_snn.yaml"
+    "--config", help="name of the config file", type=str, default="config.yaml"
 )
 args, left_argv = parser.parse_known_args()
 
@@ -231,6 +231,7 @@ while step <= config["total_env_steps"]:
                     transitionnet,
                     episode,
                     warmup=transition_config["learning"]["params"]["warmup_steps"],
+                    unroll=unroll
                 )
             )
 

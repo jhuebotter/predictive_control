@@ -16,7 +16,7 @@ general:
     params:
       hidden_dim: 512
   optim:
-    type: adam
+    type: smorms3
     params:
       lr: 0.0005
   learning:
@@ -61,7 +61,7 @@ total_env_steps: 500_000
 episodes_per_iteration: 25
 evaluate: True
 evaluate_every_n_iterations: 1
-deterministic_action: True
+deterministic_action: False
 
 # plotting parameters
 animate: False

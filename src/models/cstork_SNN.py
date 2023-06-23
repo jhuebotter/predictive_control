@@ -420,8 +420,8 @@ class PolicyNetRSNN_cstork(BaseRSNN_cstork):
         record: bool = False,
     ) -> Tensor:
                 
-        if deterministic is False:
-            raise NotImplementedError("PolicyNetRSNN_cstork does not support stochastic predictions")
+        #if deterministic is False:
+        #    raise NotImplementedError("PolicyNetRSNN_cstork does not support stochastic predictions")
         
         return self(state, target, record)
 

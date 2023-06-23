@@ -149,6 +149,7 @@ def make_act_fn(params: dict) -> dict:
         elif af == 'sigmoidspike':
             fn = activations.SigmoidSpike
             fn.beta = params['activation_kwargs'].pop('beta', fn.beta)
+            fn.gamma = params['activation_kwargs'].pop('gamma', fn.gamma)
             params['act_fn'] = fn
         elif af == 'gaussianspike':
             fn = activations.GaussianSpike

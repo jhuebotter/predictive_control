@@ -14,16 +14,17 @@ task:
 general:
   model:
     params:
-      hidden_dim: 256
+      hidden_dim: 512
   optim:
-    type: adam
+    type: smorms3
     params:
       lr: 0.0005
   learning:
     params:
-      batch_size: 1_024
-      n_batches: 100
-      max_norm: 50
+      batch_size: 512
+      n_batches: 25
+      max_norm: 30
+      warmup_steps: 5
 
 # policy model parameters
 policy:
@@ -31,14 +32,13 @@ policy:
     type: rnnPBadapt
     params:
       activation_kwargs:
-        act_fn: default
+        act_fn: lrelu
       num_rec_layers: 0
       num_ff_layers: 2
   learning:
     params:
       unroll_steps: 20
-      warmup_steps: 10
-      deterministic_transition: False
+      deterministic_transition: True
       beta: 0.0
 
 # transition model parameters
@@ -60,6 +60,7 @@ transition:
       activation_kwargs:
         act_fn: sigmoidspike
         beta: 100.0
+        gamma: 1.0
       flif_kwargs:
         reset: sub
         # train_V_tau: True
@@ -69,25 +70,25 @@ transition:
         # train_I_tau: False
         n_pop: 50
   optim:
-    type: smorms3
     params:
       lr: 0.0005
   learning:
     params:
       autoregressive: True
       unroll_steps: 1
-      warmup_steps: 8
 
 # training parameters
-memory_size: 2_000
-total_env_steps: 200_000
+memory_size: 1_000
+total_env_steps: 500_000
 episodes_per_iteration: 25
 evaluate: True
 evaluate_every_n_iterations: 1
+deterministic_action: False
+load_baseline_policy: False
 
 # plotting parameters
 animate: False
-animate_unroll: 10
+animate_unroll: 20
 record_every_n_iterations: 20
 record_first_n_episodes: 5
 

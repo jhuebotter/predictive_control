@@ -1,0 +1,62 @@
+seed: 11113
+experiment: non_spiking_baseline_search
+task:
+  type: reacher2
+  params:
+    max_episode_steps: 200
+    render: false
+    moving_target: 0.0
+general:
+  model:
+    params:
+      hidden_dim: 512
+  optim:
+    type: smorms3
+    params:
+      lr: 0.0005
+  learning:
+    params:
+      batch_size: 1024
+      n_batches: 25
+      max_norm: 30
+      warmup_steps: 5
+policy:
+  model:
+    type: rnnPBadapt
+    params:
+      activation_kwargs:
+        act_fn: lrelu
+      num_rec_layers: 0
+      num_ff_layers: 2
+  learning:
+    params:
+      unroll_steps: 20
+      deterministic_transition: true
+      beta: 0.0
+transition:
+  model:
+    type: rnnPBadapt
+    params:
+      activation_kwargs:
+        act_fn: lrelu
+      num_rec_layers: 1
+      num_ff_layers: 1
+  learning:
+    params:
+      autoregressive: true
+      unroll_steps: 1
+  optim:
+    params:
+      lr: 0.0005
+memory_size: 1000
+total_env_steps: 500000
+episodes_per_iteration: 25
+evaluate: true
+evaluate_every_n_iterations: 1
+deterministic_action: false
+animate: true
+animate_unroll: 20
+record_every_n_iterations: 10
+record_first_n_episodes: 5
+project: ann-control
+entity: jhuebotter

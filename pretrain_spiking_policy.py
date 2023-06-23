@@ -12,12 +12,10 @@ from src.utils import (
     dict_mean,
     load_weights_from_disk,
     update_dict,
-    convert_figs_to_wandb_images
+    convert_figs_to_wandb_images,
+    make_train_fn
 )
-from src.training_functions import (
-    train_policynetSNN,
-    baseline_prediction,
-)
+from src.training_functions import baseline_prediction
 from src.plotting import render_video, animate_predictions
 from src.config import get_config, save_config
 from src.logger import PandasLogger
@@ -27,7 +25,6 @@ import wandb
 from evalue_adaptive_models import evalue_adaptive_models
 import copy
 import matplotlib.pyplot as plt
-
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -81,16 +78,17 @@ transitionnet = make_transition_model(env, transition_config.get("model", {})).t
 )
 policynet = make_policy_model(env, policy_config.get("model", {})).to(device)
 
+load_trans = config.get("load_baseline_transition", True)
+train_trans = not load_trans
+
+# make training function
+policy_train_fn = make_train_fn(policy_config, "policy")
+if train_trans:
+    transition_train_fn = make_train_fn(transition_config, "transition")
+    opt_trans = make_optimizer(transitionnet.basis, transition_config.get("optim", {}))
+
 # initialize the optimizers
 opt_policy = make_optimizer(policynet.basis, policy_config.get("optim", {}))
-
-# load model and other things from checkpoint
-transitionnet, opt_trans = load_weights_from_disk(
-        transitionnet,
-        Path("transitionnet_baseline.cpt"),
-        device = device,
-    )
-print('transitionnet parameters loaded')
 
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -103,6 +101,21 @@ run_dir = Path(
 )
 run_dir.mkdir(parents=True)
 
+if load_trans:
+    # load model and other things from checkpoint
+    transitionnet, opt_trans = load_weights_from_disk(
+        transitionnet,
+        Path("baselines/transition_ann/transitionnet_baseline.cpt"),
+        device = device,
+    )
+    print('transitionnet parameters loaded')
+    save_checkpoint(
+        transitionnet,
+        opt_trans,
+        path=Path(run_dir, "transitionnet_latest.cpt"),
+    )
+
+# logging stuff
 wandb.init(
     config=config, project=config["project"], entity=config["entity"], dir="./results"
 )
@@ -173,7 +186,9 @@ while step <= config["total_env_steps"]:
 
                 # chose action and advance simulation
                 action = policynet.predict(
-                    observation.view(1, 1, -1), target.view(1, 1, -1), 
+                    observation.view(1, 1, -1), 
+                    target.view(1, 1, -1), 
+                    deterministic=config.get("deterministic_action", False),
                     record = True
                 ).flatten()
 
@@ -219,6 +234,7 @@ while step <= config["total_env_steps"]:
                     transitionnet,
                     episode,
                     warmup=transition_config["learning"]["params"]["warmup_steps"],
+                    unroll=unroll
                 )
             )
 
@@ -252,7 +268,21 @@ while step <= config["total_env_steps"]:
             step=iteration,
         )
 
-    policy_results = train_policynetSNN(
+    if train_trans:
+        # train the transition model
+        transition_results = transition_train_fn(
+            transitionnet, 
+            memory, 
+            opt_trans,
+            exclude_monitors=['PlotStateMonitor'] if not record_this_iteration else [],
+            record_transition=record_this_iteration,
+            **transition_config["learning"]["params"]
+        )
+        transitionnet_updates += transition_config["learning"]["params"]["n_batches"]
+    else:
+        transition_results = {}
+
+    policy_results = policy_train_fn(
         policynet,
         transitionnet,
         memory,
@@ -274,7 +304,7 @@ while step <= config["total_env_steps"]:
         "transitionnet learnable parameters": transitionnet.count_parameters(),
     }
     iteration_results = dict(
-        **policy_results, **baseline_results, **data, **rewards
+        **transition_results, **policy_results, **baseline_results, **data, **rewards
     )
 
     # evaluate if necessary
@@ -299,17 +329,6 @@ while step <= config["total_env_steps"]:
     summary = dict(**iteration_results, **config)
     logger.save_summary(summary)
 
-    # convert figures to wandb images
-    convert_figs_to_wandb_images(iteration_results)
-    # report and log the results
-    print()
-    for k, v in iteration_results.items():
-        try:
-            print(f"{k:30}: {v:.3e}")
-        except:
-            continue
-    wandb.log(iteration_results, step=iteration)
-
     # save the model parameters
 
     save_checkpoint(
@@ -326,6 +345,32 @@ while step <= config["total_env_steps"]:
             path=Path(run_dir, "policynet_best.cpt"),
             **iteration_results,
         )
+    if train_trans:
+        save_checkpoint(
+            transitionnet,
+            opt_trans,
+            path=Path(run_dir, "transitionnet_latest.cpt"),
+            **iteration_results,
+        )
+        if transition_results["transition model loss"] < best_transition_loss:
+            best_transition_loss = transition_results["transition model loss"]
+            save_checkpoint(
+                transitionnet,
+                opt_trans,
+                path=Path(run_dir, "transitionnet_best.cpt"),
+                **iteration_results,
+            )
+
+    # convert figures to wandb images
+    convert_figs_to_wandb_images(iteration_results)
+    # report and log the results
+    print()
+    for k, v in iteration_results.items():
+        try:
+            print(f"{k:30}: {v:.3e}")
+        except:
+            continue
+    wandb.log(iteration_results, step=iteration)
 
     # iteration complete
     iteration += 1

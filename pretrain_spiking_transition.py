@@ -12,12 +12,10 @@ from src.utils import (
     dict_mean,
     load_weights_from_disk,
     update_dict,
-    convert_figs_to_wandb_images
+    convert_figs_to_wandb_images,
+    make_train_fn
 )
-from src.training_functions import (
-    train_transitionnetSNN,
-    baseline_prediction,
-)
+from src.training_functions import baseline_prediction
 from src.plotting import render_video, animate_predictions
 from src.config import get_config, save_config
 from src.logger import PandasLogger
@@ -27,7 +25,6 @@ import wandb
 from evalue_adaptive_models import evalue_adaptive_models
 import copy
 import matplotlib.pyplot as plt
-
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -81,16 +78,17 @@ transitionnet = make_transition_model(env, transition_config.get("model", {})).t
 )
 policynet = make_policy_model(env, policy_config.get("model", {})).to(device)
 
+load_policy = config.get("load_baseline_policy", True)
+train_policy = not load_policy
+
+# make tranining function
+transition_train_fn = make_train_fn(transition_config, "transition")
+if train_policy:
+    policy_train_fn = make_train_fn(policy_config, "policy")
+    opt_policy = make_optimizer(policynet.basis, policy_config.get("optim", {}))
+
 # initialize the optimizers
 opt_trans = make_optimizer(transitionnet.basis, transition_config.get("optim", {}))
-
-# load model and other things from checkpoint
-policynet, opt_policy = load_weights_from_disk(
-        policynet,
-        Path("policynet_baseline.cpt"),
-        device = device,
-    )
-print('policynet parameters loaded')
 
 # make directory to save model and plots
 run_id = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -103,6 +101,21 @@ run_dir = Path(
 )
 run_dir.mkdir(parents=True)
 
+if load_policy:
+    # load model and other things from checkpoint
+    policynet, opt_policy = load_weights_from_disk(
+        policynet,
+        Path("baselines/policy_ann/policynet_baseline.cpt"),
+        device=device,
+    )
+    print('policynet parameters loaded')
+    save_checkpoint(
+        policynet,
+        opt_policy,
+        path=Path(run_dir, "policynet_latest.cpt"),
+    )
+
+# logging stuff
 wandb.init(
     config=config, project=config["project"], entity=config["entity"], dir="./results"
 )
@@ -156,7 +169,6 @@ while step <= config["total_env_steps"]:
             render_mode = None
 
         with torch.no_grad():
-
             # reset the environment
             observation, target = env.reset()
             observation = torch.tensor(observation, device=device, dtype=torch.float32)
@@ -173,8 +185,10 @@ while step <= config["total_env_steps"]:
 
                 # chose action and advance simulation
                 action = policynet.predict(
-                    observation.view(1, 1, -1), target.view(1, 1, -1), 
-                    record = True
+                    observation.view(1, 1, -1),
+                    target.view(1, 1, -1),
+                    deterministic=config.get("deterministic_action", False),
+                    record=True,
                 ).flatten()
 
                 a = action.flatten().detach().clip(action_min, action_max)
@@ -219,6 +233,7 @@ while step <= config["total_env_steps"]:
                     transitionnet,
                     episode,
                     warmup=transition_config["learning"]["params"]["warmup_steps"],
+                    unroll=unroll
                 )
             )
 
@@ -255,7 +270,7 @@ while step <= config["total_env_steps"]:
         )
 
     # train the transition model
-    transition_results = train_transitionnetSNN(
+    transition_results = transition_train_fn(
         transitionnet, 
         memory, 
         opt_trans,
@@ -264,6 +279,21 @@ while step <= config["total_env_steps"]:
         **transition_config["learning"]["params"]
     )
     transitionnet_updates += transition_config["learning"]["params"]["n_batches"]
+
+    # train the policy
+    if train_policy:
+        policy_results = policy_train_fn(
+            policynet,
+            transitionnet,
+            memory,
+            opt_policy,
+            loss_gain=env.loss_gain,
+            exclude_monitors=["PlotStateMonitor"] if not record_this_iteration else [],
+            **policy_config["learning"]["params"],
+        )
+        policynet_updates += policy_config["learning"]["params"]["n_batches"]
+    else:
+        policy_results = {}
 
     # log the iteration results
     data = {
@@ -276,7 +306,7 @@ while step <= config["total_env_steps"]:
         "transitionnet learnable parameters": transitionnet.count_parameters(),
     }
     iteration_results = dict(
-        **transition_results, **baseline_results, **data, **rewards
+        **transition_results, **policy_results, **baseline_results, **data, **rewards
     )
 
     # evaluate if necessary
@@ -316,6 +346,21 @@ while step <= config["total_env_steps"]:
             path=Path(run_dir, "transitionnet_best.cpt"),
             **iteration_results,
         )
+    if train_policy:
+        save_checkpoint(
+            policynet,
+            opt_policy,
+            path=Path(run_dir, "policynet_latest.cpt"),
+            **iteration_results,
+        )
+        if policy_results["policy model loss"] < best_policy_loss:
+            best_policy_loss = policy_results["policy model loss"]
+            save_checkpoint(
+                policynet,
+                opt_policy,
+                path=Path(run_dir, "policynet_best.cpt"),
+                **iteration_results,
+            )
 
     # convert figures to wandb images
     convert_figs_to_wandb_images(iteration_results)

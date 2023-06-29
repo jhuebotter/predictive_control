@@ -153,11 +153,15 @@ def make_act_fn(params: dict) -> dict:
             params['act_fn'] = fn
         elif af == 'gaussianspike':
             fn = activations.GaussianSpike
+            fn.beta = params['activation_kwargs'].pop('lens', fn.beta)
             fn.gamma = params['activation_kwargs'].pop('gamma', fn.gamma)
-            fn.lens = params['activation_kwargs'].pop('lens', fn.lens)
             fn.scale = params['activation_kwargs'].pop('scale', fn.scale)
             fn.hight = params['activation_kwargs'].pop('hight', fn.hight)
             params['act_fn'] = fn
+        elif af == 'superspike':
+            fn = activations.SuperSpike
+            fn.beta = params['activation_kwargs'].pop('beta', fn.beta)
+            fn.gamma = params['activation_kwargs'].pop('gamma', fn.gamma)
         elif af == 'default':
             params.pop('act_fn', None)
         else:

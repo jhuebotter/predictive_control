@@ -40,7 +40,7 @@ parser.add_argument(
     default="",
 )
 parser.add_argument(
-    "--config", help="name of the config file", type=str, default="config.yaml"
+    "--config", help="name of the config file", type=str, default="config_snn.yaml"
 )
 args, left_argv = parser.parse_known_args()
 

@@ -1,6 +1,6 @@
 # general parameters
 seed: 777
-experiment: dev_double_snn_baseline2
+experiment: dev_double_snn_baseline3
 
 # task parameters
 task:
@@ -16,15 +16,16 @@ general:
     params:
       hidden_dim: 1024
       dt: 0.002
-      nu: 50
+      nu: 100
       out_style: last
       lowerBoundL2Strength: 0.0
       upperBoundL2Strength: 1.0
       weightL2Strength: 0.0
       repeat_input: 8
       activation_kwargs:
-        act_fn: superspike
+        act_fn: gaussianspike
         beta: 100.0
+        gamma: 1.0
       flif_kwargs:
         reset: sub
       readout_kwargs:

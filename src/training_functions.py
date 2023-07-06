@@ -143,8 +143,8 @@ def train_transitionnetRNNPBNLL_sample_unroll(
             if autoregressive and k > 0:
                 s_hat = s_hat + rp(s_hat_delta_mu, s_hat_delta_logvar)
             else:
-                s_hat = state_batch[warmup_steps+k]
-        
+                s_hat = state_batch[warmup_steps + k]
+
             s_hat_delta_mu, s_hat_delta_logvar = transition_model(
                 s_hat, action_batch[warmup_steps + k]
             )
@@ -469,7 +469,9 @@ def train_transitionnetSNN(
         # warm up the model
         if warmup_steps > 0:
             _ = transition_model(
-                state_batch[:warmup_steps], action_batch[:warmup_steps], record=record_transition
+                state_batch[:warmup_steps],
+                action_batch[:warmup_steps],
+                record=record_transition,
             )
 
         state = state_batch[warmup_steps]
@@ -479,7 +481,9 @@ def train_transitionnetSNN(
             next_state = next_state_batch[warmup_steps + k]
 
             # predict the next state
-            next_state_delta_hat = transition_model.predict(state, action, record=record_transition)
+            next_state_delta_hat = transition_model.predict(
+                state, action, record=record_transition
+            )
             next_state_hat = next_state_delta_hat + state
 
             # compute the prediction loss
@@ -487,10 +491,9 @@ def train_transitionnetSNN(
             # prediction_loss += torch.sum(torch.abs(next_state - next_state_hat))
 
             # compare predictions with ground truth
-            #loss = F.gaussian_nll_loss(
+            # loss = F.gaussian_nll_loss(
             #    next_state_hat, next_state, torch.ones_like(next_state_hat) * 0.01
-            #)  # this is equivalent to computing the loss step by step
-
+            # )  # this is equivalent to computing the loss step by step
 
             # update the state
             if autoregressive:
@@ -665,7 +668,13 @@ def train_policynetSNN(
 
 
 @torch.no_grad()
-def baseline_prediction(transitionnet: Module, episode: list, warmup: int = 0, unroll: int = 1, max_samples: int = 10) -> dict:
+def baseline_prediction(
+    transitionnet: Module,
+    episode: list,
+    warmup: int = 0,
+    unroll: int = 1,
+    max_samples: int = 1,
+) -> dict:
     """function used to evaluate transition network predictions against baseline values"""
 
     T = len(episode)
@@ -692,16 +701,20 @@ def baseline_prediction(transitionnet: Module, episode: list, warmup: int = 0, u
     if steps > 0:
         for step in range(steps):
             transitionnet.reset_state()
-            _ = transitionnet.predict(states[step:warmup+step], actions[step:warmup+step], deterministic=True)
+            _ = transitionnet.predict(
+                states[step : warmup + step],
+                actions[step : warmup + step],
+                deterministic=True,
+            )
             pred_states = torch.empty((unroll, *states.shape[1:]), device=device)
-            state = states[warmup+step]
+            state = states[warmup + step]
             for i in range(unroll):
-                action = actions[warmup+step+i]
+                action = actions[warmup + step + i]
                 delta_states = transitionnet.predict(state, action, deterministic=True)
                 pred_states[i] = state + delta_states.detach()
                 state = pred_states[i]
                 unrolled_state_mse += torch.pow(
-                    pred_states[i] - next_states[warmup+step+i], 2
+                    pred_states[i] - next_states[warmup + step + i], 2
                 ).mean()
         unrolled_state_mse.div_(steps)
 

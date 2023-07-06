@@ -162,6 +162,7 @@ def make_act_fn(params: dict) -> dict:
             fn = activations.SuperSpike
             fn.beta = params['activation_kwargs'].pop('beta', fn.beta)
             fn.gamma = params['activation_kwargs'].pop('gamma', fn.gamma)
+            params['act_fn'] = fn
         elif af == 'default':
             params.pop('act_fn', None)
         else:

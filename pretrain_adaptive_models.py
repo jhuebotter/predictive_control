@@ -330,30 +330,30 @@ while step <= config["total_env_steps"]:
         transitionnet,
         opt_trans,
         path=Path(run_dir, "transitionnet_latest.cpt"),
-        **iteration_results,
+        #**iteration_results,
     )
-    if transition_results["transition model loss"] < best_transition_loss:
-        best_transition_loss = transition_results["transition model loss"]
-        save_checkpoint(
-            transitionnet,
-            opt_trans,
-            path=Path(run_dir, "transitionnet_best.cpt"),
-            **iteration_results,
-        )
+    #if transition_results["transition model loss"] < best_transition_loss:
+    #    best_transition_loss = transition_results["transition model loss"]
+    #    save_checkpoint(
+    #        transitionnet,
+    #        opt_trans,
+    #        path=Path(run_dir, "transitionnet_best.cpt"),
+    #        **iteration_results,
+    #    )
     save_checkpoint(
         policynet,
         opt_policy,
         path=Path(run_dir, "policynet_latest.cpt"),
-        **iteration_results,
+        #**iteration_results,
     )
-    if policy_results["policy model loss"] < best_policy_loss:
-        best_policy_loss = policy_results["policy model loss"]
-        save_checkpoint(
-            policynet,
-            opt_policy,
-            path=Path(run_dir, "policynet_best.cpt"),
-            **iteration_results,
-        )
+    #if policy_results["policy model loss"] < best_policy_loss:
+    #    best_policy_loss = policy_results["policy model loss"]
+    #    save_checkpoint(
+    #        policynet,
+    #        opt_policy,
+    #        path=Path(run_dir, "policynet_best.cpt"),
+    #        **iteration_results,
+    #    )
 
     # convert figures to wandb images
     convert_figs_to_wandb_images(iteration_results)

@@ -16,7 +16,11 @@ from control_stork.initializers import (
     DistInitializer,
     AverageInitializer,
 )
-from control_stork.monitors import PlotStateMonitor, PopulationSpikeCountMonitor
+from control_stork.monitors import (
+    PlotStateMonitor, 
+    PopulationSpikeCountMonitor,
+    ActiveNeuronMonitor,
+)
 
 # SpikeMonitor, SpikeCountMonitor, StateMonitor, PopulationFiringRateMonitor, PopulationSpikeCountMonitor
 from control_stork.regularizers import LowerBoundL2, UpperBoundL2, WeightL2Regularizer
@@ -78,7 +82,7 @@ class BaseRSNN_cstork(torch.nn.Module):
         lowerBoundL2Strength = kwargs.get("lowerBoundL2Strength", 0.0)
         lowerBoundL2Threshold = kwargs.get("lowerBoundL2Threshold", 1e-3)
         upperBoundL2Strength = kwargs.get("upperBoundL2Strength", 0.0)
-        upperBoundL2Threshold = kwargs.get("upperBoundL2Threshold", 0.5)
+        upperBoundL2Threshold = kwargs.get("upperBoundL2Threshold", 0.3)
         if lowerBoundL2Strength > 0.0:
             regLB = LowerBoundL2(
                 lowerBoundL2Strength, threshold=lowerBoundL2Threshold, dims=False
@@ -171,6 +175,7 @@ class BaseRSNN_cstork(torch.nn.Module):
             self.basis.add_monitor(
                 PopulationSpikeCountMonitor(new.output_group, avg=True)
             )
+            self.basis.add_monitor(ActiveNeuronMonitor(new.output_group))
 
             prev = new.output_group
         for i in range(num_ff_layers):

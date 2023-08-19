@@ -273,7 +273,7 @@ while step <= config["total_env_steps"]:
         memory,
         opt_trans,
         exclude_monitors=["PlotStateMonitor"] if not record_this_iteration else [],
-        record_transition=record_this_iteration,
+        #record_transition=record_this_iteration,
         **transition_config["learning"]["params"],
     )
     transitionnet_updates += transition_config["learning"]["params"]["n_batches"]

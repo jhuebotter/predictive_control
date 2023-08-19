@@ -85,7 +85,7 @@ class BaseRSNN_cstork(torch.nn.Module):
         upperBoundL2Threshold = kwargs.get("upperBoundL2Threshold", 0.3)
         if lowerBoundL2Strength > 0.0:
             regLB = LowerBoundL2(
-                lowerBoundL2Strength, threshold=lowerBoundL2Threshold, dims=False
+                lowerBoundL2Strength, threshold=lowerBoundL2Threshold, dims=None
             )
             regs.append(regLB)
         if upperBoundL2Strength > 0.0:

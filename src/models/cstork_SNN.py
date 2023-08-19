@@ -213,6 +213,7 @@ class BaseRSNN_cstork(torch.nn.Module):
             self.basis.add_monitor(
                 PopulationSpikeCountMonitor(new.output_group, avg=True)
             )
+            self.basis.add_monitor(ActiveNeuronMonitor(new.output_group))
 
             prev = new.output_group
 

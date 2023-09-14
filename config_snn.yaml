@@ -1,6 +1,6 @@
 # general parameters
-seed: 777
-experiment: dev_double_snn_baseline4
+seed: 555
+experiment: dev_double_snn_baseline_go
 
 # task parameters
 task:
@@ -20,13 +20,15 @@ general:
       out_style: last
       lowerBoundL2Strength: 0.0
       upperBoundL2Strength: 1.0
-      weightL2Strength: 0.0
+      weightL2Strength: 0.001
       repeat_input: 8
       activation_kwargs:
         act_fn: sigmoidspike
         beta: 25.0
         gamma: 1.0
       flif_kwargs:
+        I_tau_mean: 0.01
+        V_tau_mean: 0.02
         reset: sub
       readout_kwargs:
         n_pop: 25
@@ -69,7 +71,7 @@ transition:
 
 # training parameters
 memory_size: 1_000
-total_env_steps: 400_000
+total_env_steps: 500_000
 episodes_per_iteration: 25
 evaluate: True
 evaluate_every_n_iterations: 1

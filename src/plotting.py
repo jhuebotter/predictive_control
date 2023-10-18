@@ -62,9 +62,22 @@ def plot_curves(data=dict[str: list[array]], logy: bool = True, show: bool = Fal
     plt.close()
 
 
-def render_video(frames: list[array], framerate: int = 30, dpi: int = 70,
-                 save: Optional[Union[Path, str]] = './animation.mp4') -> object:
-    """render a video from a list of numpy RGB arrays and save to disk"""
+def render_video(
+        frames: list[array], 
+        framerate: int = 30, 
+        dpi: int = 70,
+        save: Optional[Union[Path, str]] = './animation.mp4'
+    ) -> object:
+    """render a video from a list of numpy RGB arrays and save to disk
+    Args:
+        frames: list of RGB arrays
+        framerate: frames per second
+        dpi: dots per inch
+        save: path to save the video to
+
+    Returns:
+        animation object    
+    """
 
     assert len(frames) > 0
     height, width, _ = frames[0].shape
@@ -80,8 +93,14 @@ def render_video(frames: list[array], framerate: int = 30, dpi: int = 70,
         im.set_data(frame)
         return [im]
     interval = 1000/framerate
-    anim = animation.FuncAnimation(fig=fig, func=update, frames=frames,
-                                   interval=interval, blit=True, repeat=False)
+    anim = animation.FuncAnimation(
+        fig=fig, 
+        func=update, 
+        frames=frames,
+        interval=interval, 
+        blit=True, 
+        repeat=False
+    )
     if save:
         print(f"Saving animation to {save}")
         anim.save(save)

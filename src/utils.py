@@ -327,7 +327,7 @@ def make_optimizer(model: torch.nn.Module, config: dict) -> torch.optim.Optimize
 
 
 
-def dict_mean(dict_list: list[dict]) -> dict:
+def dict_mean(dict_list: list[dict[str, float]]) -> dict:
     """for a list of dicts with the same keys and numeric values return a dict with the same keys and averaged values"""
 
     mean_dict = {}
